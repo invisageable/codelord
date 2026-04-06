@@ -1,0 +1,22 @@
+[default]
+extend-ignore-re = [
+  # extensible data notation file extension. can be confuse with "end".
+  "edn"
+]
+
+[default.extend-words]
+eazy = "eazy"
+
+[default.extend-identifiers]
+bitcase = "bitcase"
+
+[files]
+extend-exclude = [
+  "target/",
+  "*.lock",
+  "**/*.md",
+  "docs/",
+  "notes/",
+  "apps/coder/codelord-i18n/locales/",
+  "apps/coder/codelord-assets/samples/"
+]

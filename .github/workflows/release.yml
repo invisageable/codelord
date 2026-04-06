@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  CARGO_TERM_COLOR: always
+  WHISPER_NO_METAL: 1
+  WHISPER_NO_COREML: 1
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: codelord-macos-arm64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: codelord-macos-x64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: codelord-linux-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: codelord-windows-x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglib2.0-dev libgtk-3-dev libatk1.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev cmake libasound2-dev libudev-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew list cmake &>/dev/null || brew install cmake
+          SDKROOT=$(xcrun --show-sdk-path)
+          LIBCLANG_PATH="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+          echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+          echo "LIBCLANG_PATH=$LIBCLANG_PATH" >> $GITHUB_ENV
+
+      - name: Set ARM arch flags
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+          SDKROOT=$(xcrun --show-sdk-path)
+          echo "CFLAGS=-march=armv8-a+dotprod" >> $GITHUB_ENV
+          echo "CXXFLAGS=-march=armv8-a+dotprod" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-march=armv8-a+dotprod --sysroot=$SDKROOT" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # macOS: build .app bundle
+      - name: Install cargo-bundle
+        if: runner.os == 'macOS'
+        run: cargo install cargo-bundle
+
+      - name: Build macOS bundle
+        if: runner.os == 'macOS'
+        run: cargo bundle --release -p codelord --target ${{ matrix.target }}
+
+      - name: Patch macOS Info.plist
+        if: runner.os == 'macOS'
+        run: |
+          BUNDLE_PATH="target/${{ matrix.target }}/release/bundle/osx/codelord.app"
+          PLIST_PATH="$BUNDLE_PATH/Contents/Info.plist"
+          if [ -f "$PLIST_PATH" ] && ! grep -q "NSMicrophoneUsageDescription" "$PLIST_PATH"; then
+            sed -i '' 's|</dict>|  <key>NSMicrophoneUsageDescription</key>\
+            <string>codelord needs microphone access for voice control commands.</string>\
+          </dict>|' "$PLIST_PATH"
+          fi
+
+      - name: Download pdfium (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          BUNDLE_PATH="target/${{ matrix.target }}/release/bundle/osx/codelord.app"
+          FRAMEWORKS_DIR="$BUNDLE_PATH/Contents/Frameworks"
+          mkdir -p "$FRAMEWORKS_DIR"
+          if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
+            PLATFORM="mac-arm64"
+          else
+            PLATFORM="mac-x64"
+          fi
+          curl -L -o /tmp/pdfium.tgz "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-${PLATFORM}.tgz"
+          mkdir -p /tmp/pdfium-extract
+          tar -xzf /tmp/pdfium.tgz -C /tmp/pdfium-extract
+          cp /tmp/pdfium-extract/lib/libpdfium.dylib "$FRAMEWORKS_DIR/"
+
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          cd "target/${{ matrix.target }}/release/bundle/osx"
+          tar czvf "$GITHUB_WORKSPACE/${{ matrix.artifact }}-${{ github.ref_name }}.tar.gz" codelord.app
+
+      # Linux: build binary
+      - name: Build Linux
+        if: runner.os == 'Linux'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Download pdfium (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -L -o /tmp/pdfium.tgz "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz"
+          mkdir -p /tmp/pdfium-extract
+          tar -xzf /tmp/pdfium.tgz -C /tmp/pdfium-extract
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist/codelord
+          cp target/${{ matrix.target }}/release/codelord dist/codelord/
+          cp /tmp/pdfium-extract/lib/libpdfium.so dist/codelord/
+          cd dist
+          tar czvf "$GITHUB_WORKSPACE/${{ matrix.artifact }}-${{ github.ref_name }}.tar.gz" codelord
+
+      # Windows: build binary
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Download pdfium (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          curl -L -o "$RUNNER_TEMP/pdfium.tgz" "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz"
+          mkdir -p "$RUNNER_TEMP/pdfium-extract"
+          tar -xzf "$RUNNER_TEMP/pdfium.tgz" -C "$RUNNER_TEMP/pdfium-extract"
+
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/codelord.exe dist/
+          cp "$RUNNER_TEMP/pdfium-extract/lib/pdfium.dll" dist/
+          cd dist
+          7z a "$GITHUB_WORKSPACE/${{ matrix.artifact }}-${{ github.ref_name }}.zip" codelord.exe pdfium.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}-${{ github.ref_name }}.tar.gz
+            ${{ matrix.artifact }}-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -laR artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "codelord ${{ github.ref_name }}"
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+          generate_release_notes: true

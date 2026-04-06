@@ -1,0 +1,49 @@
+# scripts run with npm. to build to package.json
+# in command line in directory `.../mobiledlr/dist`
+# `node ./tasks/buildPackage`
+scripts:
+
+  # bring together api.yml file with d.ts definitions
+  # print to public
+  api: |
+    cpx "../ts/api/**" api
+    && node ./tasks/api-generator.js
+  browserify: browserify
+  deploy: node ./tasks/deploy.js
+
+  # dsr app
+  dsr: |
+    browserify ./views/dealer_service_report/dsr.js
+    | tee ./public/js/dsr.js
+    | uglifyjs -m -c
+    | tee ./public/js/dsr.min.js
+    | ngzip
+    > ./public/js/dsr.min.js.gz
+
+  dsr:watch: watchify ./views/dealer_service_report/dsr.js -o ./public/js/dsr.js
+
+  r: ramda
+  start: node ./app.js --use_strict
+
+  # Copy convert stylus files in directory to css
+  # files in public directory.
+  stylus: stylus -w -c ../static/stylus -o public/css
+  test: node ./tasks/tests.js
+  typescript: |
+    tsc
+    --isolatedModules
+    -m commonjs
+    -t es5
+    --removeComments
+    --sourceMap
+    --outDir ./
+    --rootDir ../ts
+
+  watch: nodemon ./app.js --use_strict
+
+  # this has been deprecated by browserify
+  webpack: |
+    ./node_modules/.bin/webpack -w --cache --config ./config/webpack.config.js
+
+  # e.g., npm run watchify ./dsr.js -o ./public/dsr.js
+  watchify: watchify

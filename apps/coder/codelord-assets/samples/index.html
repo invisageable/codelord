@@ -1,0 +1,87 @@
+<!DOCTYPE HTML>
+<html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Rendering Test</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          background-color: #f4f4f4;
+          color: #333;
+        }
+
+        header {
+          background-color: #333;
+          color: #fff;
+          padding: 10px 0;
+          text-align: center;
+        }
+        
+        nav { 
+          display: flex;
+          justify-content: center;
+          background-color: #444;
+          padding: 10px;
+        }
+        
+        nav a {
+          color: #fff;
+          text-decoration: none;
+          margin: 0 15px;
+        }
+        
+        section {
+          padding: 20px;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        
+        .about,
+        .portfolio,
+        .contact {
+          margin-bottom: 40px;
+        }
+        
+        .portfolio img {
+          max-width: 100%;
+          height: auto;
+        } 
+        
+        footer {
+          text-align: center;
+          padding: 10px 0;
+          background-color: #333;
+          color: #fff;
+        }
+      </style> 
+    </head>
+    <body>
+        <div class="container">
+          <h1>Hello World!</h1>
+          <p>This is a sample paragraph.</p>
+        </div>
+      
+        <!-- script -->
+        <script>
+          function customTransform(text) {
+            return text
+              .split(/\b/)
+              .map(segment => {
+                if (segment.toLowerCase() === 'zo') return 'zo';
+
+                return segment
+                  .split('')
+                  .map(char => {
+                    if (char.toLowerCase() === 'i') return 'i';
+                    return char.toUpperCase();
+                  })
+                  .join('');
+              })
+              .join('');
+          }
+        </script>
+    </body>
+</html>

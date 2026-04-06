@@ -1,0 +1,15 @@
+[package]
+name = "codelord-protocol"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+
+# external:crates.
+serde = { workspace = true }

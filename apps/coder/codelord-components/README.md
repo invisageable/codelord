@@ -1,0 +1,2 @@
+
+  - Pixels/visuals → ide-components

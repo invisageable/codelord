@@ -1,0 +1,18 @@
+[package]
+name = "codelord-audio"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+rodio = { workspace = true }
+rustc-hash = { workspace = true }
+symphonia = { workspace = true }
+flume = { workspace = true }
+log = { workspace = true }
+
+[features]
+default = ["local"]
+local = []

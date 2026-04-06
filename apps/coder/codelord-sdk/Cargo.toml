@@ -1,0 +1,26 @@
+[package]
+name = "codelord-sdk"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:crates.
+codelord-core = { workspace = true }
+codelord-protocol = { workspace = true }
+
+# external:crates.
+dirs = { workspace = true }
+flume = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+rayon = { workspace = true }
+reqwest = { workspace = true }
+sonic-rs = { workspace = true }
+sqlx = { workspace = true }
+swisskit = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,5 @@
+_version: 1
+settings.categories.app: APP
+settings.categories.appearance: APPEARANCE
+settings.categories.editor: EDiTOR
+settings.categories.system: SYSTEM

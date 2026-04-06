@@ -1,0 +1,45 @@
+[package]
+name = "codelord-components"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+codelord-audio = { workspace = true }
+codelord-core = { workspace = true }
+codelord-git = { workspace = true }
+codelord-i18n = { workspace = true }
+codelord-language = { workspace = true }
+codelord-voice = { workspace = true }
+
+# zo compiler runtime for native UI rendering.
+zo-runtime-native = { workspace = true }
+zo-runtime-render = { workspace = true }
+zo-ui-protocol = { workspace = true }
+
+# external:crates.
+alacritty_terminal = { workspace = true }
+bytemuck = { workspace = true }
+eframe = { workspace = true }
+eazy = { workspace = true }
+log = { workspace = true }
+egui_extras = { workspace = true }
+flume = { workspace = true }
+image = { workspace = true }
+libc = { workspace = true }
+pulldown-cmark = { workspace = true }
+resvg = { workspace = true }
+rfd = { workspace = true }
+rust-i18n = { workspace = true }
+rustc-hash = { workspace = true }
+rustfft = { workspace = true }
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+swisskit = { workspace = true }
+usvg = { workspace = true }
+wgpu = { workspace = true }

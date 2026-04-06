@@ -1,0 +1,5 @@
+_version: 1
+settings.categories.app: アプリ
+settings.categories.appearance: 外観
+settings.categories.editor: エディタ
+settings.categories.system: システム

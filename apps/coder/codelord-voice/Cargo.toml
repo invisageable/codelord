@@ -1,0 +1,27 @@
+[package]
+name = "codelord-voice"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+codelord-protocol = { workspace = true }
+codelord-sdk = { workspace = true }
+
+# external:crates.
+bevy_ecs = { workspace = true }
+cpal = { workspace = true }
+dirs = { workspace = true }
+flume = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+tokio = { workspace = true }
+whisper-rs = { workspace = true }

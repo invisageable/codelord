@@ -1,0 +1,36 @@
+[package]
+name = "codelord-server"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+codelord-protocol = { workspace = true }
+zo-analyzer = { workspace = true }
+zo-codegen = { workspace = true }
+zo-codegen-backend = { workspace = true }
+zo-interner = { workspace = true }
+zo-parser = { workspace = true }
+zo-runtime-web = { workspace = true }
+zo-sir = { workspace = true }
+zo-token = { workspace = true }
+zo-tokenizer = { workspace = true }
+zo-tree = { workspace = true }
+zo-ui-protocol = { workspace = true }
+
+# external:crates.
+axum = { workspace = true }
+dotenv = { workspace = true }
+reqwest = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

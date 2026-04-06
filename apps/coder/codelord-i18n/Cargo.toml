@@ -1,0 +1,15 @@
+[package]
+name = "codelord-i18n"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+
+# external:crates.
+rust-i18n = { workspace = true }

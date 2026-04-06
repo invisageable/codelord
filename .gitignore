@@ -1,0 +1,11 @@
+/.vscode
+/apps/coder/codelord-notes/personal
+/apps/coder/codelord-release
+/program
+/target
+/tmp
+
+**.DS_Store
+.env
+.todo.md
+TODO.md

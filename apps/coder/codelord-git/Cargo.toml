@@ -1,0 +1,16 @@
+[package]
+name = "codelord-git"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+
+# external:crates.
+log = { workspace = true }
+rustc-hash = { workspace = true }

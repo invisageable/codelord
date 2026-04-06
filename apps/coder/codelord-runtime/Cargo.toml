@@ -1,0 +1,16 @@
+[package]
+name = "codelord-runtime"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+
+# external:crates.
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }

@@ -1,0 +1,24 @@
+[package]
+name = "codelord"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# internal:sources.
+
+# internal:crates.
+codelord-coder = { workspace = true }
+
+# external:crates.
+eframe = { workspace = true }
+env_logger = { workspace = true }
+
+[package.metadata.bundle]
+name = "codelord"
+identifier = "com.zo.codelord"
+version = "0.0.0"
+copyright = "Copyright 2025 — compilords. All rights reserved."
+category = "Developer Tool"
+short_description = "THE NEXT-GEN CODE EDiTOR OS-LiKE, GPU-POWERED."
+osx_minimum_system_version = "11"
+info_plist_path = "Info.plist"

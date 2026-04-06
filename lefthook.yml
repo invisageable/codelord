@@ -1,0 +1,41 @@
+pre-commit:
+  piped: true
+  commands:
+    typos:
+      root: ""
+      exclude: "*.md"
+      run: typos --format=brief {staged_files}
+
+    codelord fmt:
+      root: "apps/coder/"
+      glob: "**/*.rs"
+      run: cargo fmt --all
+      stage_fixed: true
+
+    codelord clippy:
+      glob: "apps/coder/**/*.rs"
+      run: cargo clippy --all --all-targets -- -D warnings
+
+    codelord test:
+      root: "apps/coder/"
+      glob: "*.rs"
+      # Changed from 'cargo test' to 'cargo nextest run'
+      # Added '--all-features' as a best practice for local hooks
+      run: cargo nextest run --workspace --all-features
+
+# pre-push:
+#   commands:
+#     nextest:
+#       run: cargo nextest run --all-targets --all-features
+#     doctests:
+#       run: cargo test --doc
+#     python-tests:
+#       run: uv tasks/
+
+# post-merge:
+#   commands:
+#     cargo-check:
+#       run: cargo fetch
+#     pip-install:
+#       glob: "scripts/requirements.txt"
+#       run: pip install -r scripts/requirements.txt
