@@ -232,7 +232,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
                     .id(text_edit_id)
                     .background_color(egui::Color32::TRANSPARENT)
                     .text_color(input_color)
-                    .frame(false)
+                    .frame(egui::Frame::NONE)
                     .hint_text(""),
                 );
 

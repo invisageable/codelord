@@ -49,24 +49,24 @@ pub fn render(ui: &mut egui::Ui, world: &mut World) {
   }
 
   // Split layout: table list on left, content on right
-  egui::SidePanel::left("sqlite_tables")
-    .default_width(200.0)
+  egui::Panel::left("sqlite_tables")
+    .default_size(200.0)
     .frame(egui::Frame::NONE)
-    .min_width(150.0)
-    .max_width(400.0)
+    .min_size(150.0)
+    .max_size(400.0)
     .resizable(true)
     .show_inside(ui, |ui| show_table_list(ui, world));
 
   egui::CentralPanel::default()
     .frame(egui::Frame::NONE)
     .show_inside(ui, |ui| {
-      egui::TopBottomPanel::top("sqlite_tabbar")
-        .exact_height(24.0)
+      egui::Panel::top("sqlite_tabbar")
+        .exact_size(24.0)
         .frame(egui::Frame::NONE.inner_margin(egui::Margin::ZERO))
         .show_inside(ui, |ui| show_tabbar(ui, world));
 
-      egui::TopBottomPanel::bottom("sqlite_footer")
-        .exact_height(24.0)
+      egui::Panel::bottom("sqlite_footer")
+        .exact_size(24.0)
         .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(8, 4)))
         .show_inside(ui, |ui| show_footer(ui, world));
 

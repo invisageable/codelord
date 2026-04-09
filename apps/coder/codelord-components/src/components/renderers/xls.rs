@@ -48,8 +48,8 @@ pub fn render(ui: &mut egui::Ui, state: &XlsPreviewState) -> Option<XlsAction> {
 
   // Sheet tabs at top (only if multiple sheets)
   if data.sheet_names.len() > 1 {
-    egui::TopBottomPanel::top("xls_sheet_tabs")
-      .exact_height(28.0)
+    egui::Panel::top("xls_sheet_tabs")
+      .exact_size(28.0)
       .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(8, 0)))
       .show_inside(ui, |ui| {
         if let Some(sheet_action) =
@@ -62,8 +62,8 @@ pub fn render(ui: &mut egui::Ui, state: &XlsPreviewState) -> Option<XlsAction> {
 
   // Footer with pagination and info
   let total_pages = state.total_pages();
-  egui::TopBottomPanel::bottom("xls_footer")
-    .exact_height(24.0)
+  egui::Panel::bottom("xls_footer")
+    .exact_size(24.0)
     .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(8, 4)))
     .show_inside(ui, |ui| {
       if let Some(page_action) = render_footer(

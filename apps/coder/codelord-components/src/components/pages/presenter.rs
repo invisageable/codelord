@@ -57,17 +57,19 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   let visuals = ui.style().visuals.clone();
 
   // Left sidebar with thumbnails
-  egui::SidePanel::left("presenter_slides")
-    .default_width(160.0)
-    .min_width(120.0)
-    .max_width(240.0)
+  egui::Panel::left("presenter_slides")
+    .default_size(160.0)
+    .min_size(120.0)
+    .max_size(240.0)
     .resizable(true)
     .frame(egui::Frame::NONE.fill(visuals.faint_bg_color))
     .show_inside(ui, |ui| {
       // Bottom counter (like explorer file count)
-      egui::TopBottomPanel::top("presenter_slcodelord_counter")
-        .exact_height(24.0)
-        .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+      egui::Panel::top("presenter_slcodelord_counter")
+        .exact_size(24.0)
+        .frame(
+          egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+        )
         .show_inside(ui, |ui| {
           ui.with_layout(
             egui::Layout::left_to_right(egui::Align::Center),
@@ -83,13 +85,15 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
         });
 
       egui::CentralPanel::default()
-        .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+        .frame(
+          egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+        )
         .show_inside(ui, |ui| show_slcodelord_thumbnails(ui, world));
     });
 
   // Top bar: + button and slide counter
-  egui::TopBottomPanel::top("presenter_toolbar")
-    .exact_height(24.0)
+  egui::Panel::top("presenter_toolbar")
+    .exact_size(24.0)
     .frame(
       egui::Frame::NONE
         .fill(visuals.window_fill)
@@ -107,9 +111,9 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     }
   };
 
-  egui::TopBottomPanel::bottom("presenter_notes")
-    .min_height(80.0)
-    .max_height(200.0)
+  egui::Panel::bottom("presenter_notes")
+    .min_size(80.0)
+    .max_size(200.0)
     .resizable(true)
     .frame(egui::Frame::NONE.fill(visuals.faint_bg_color))
     .show_inside(ui, |ui| {
@@ -135,7 +139,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
             egui::TextEdit::multiline(&mut note_text)
               .font(egui::TextStyle::Body)
               .hint_text("Add notes for this slide...")
-              .frame(false),
+              .frame(egui::Frame::NONE),
           );
 
           // Save notes when changed

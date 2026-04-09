@@ -70,15 +70,19 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     };
 
     // Show terminal at calculated height
-    egui::TopBottomPanel::bottom("bottom_panel_zoomed")
-      .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-      .exact_height(round_ui(terminal_height))
+    egui::Panel::bottom("bottom_panel_zoomed")
+      .frame(
+        egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+      )
+      .exact_size(round_ui(terminal_height))
       .show_inside(ui, |ui| panel_bottom::show(ui, world));
 
     // Show editor in remaining space during animation or when not fully zoomed
     if is_animating || !is_zoomed {
       egui::CentralPanel::default()
-        .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+        .frame(
+          egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+        )
         .show_inside(ui, |ui| view::show(ui, world));
     }
 
@@ -88,7 +92,9 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   // Editor zoom: show only editor (panels already hidden by system)
   if zoom_source == ZoomSource::Editor && (is_zoomed || is_animating) {
     egui::CentralPanel::default()
-      .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+      .frame(
+        egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+      )
       .show_inside(ui, |ui| view::show(ui, world));
 
     return;
@@ -109,24 +115,24 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     .map(|r| r.is_visible)
     .unwrap_or(false);
 
-  egui::SidePanel::left("left_panel")
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-    .min_width(round_ui(250.0))
+  egui::Panel::left("left_panel")
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
+    .min_size(round_ui(250.0))
     .show_animated_inside(ui, left_visible, |ui| panel_left::show(ui, world));
 
-  egui::SidePanel::right("right_panel")
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-    .min_width(round_ui(400.0))
+  egui::Panel::right("right_panel")
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
+    .min_size(round_ui(400.0))
     .show_animated_inside(ui, right_visible, |ui| panel_right::show(ui, world));
 
-  egui::TopBottomPanel::bottom("bottom_panel")
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-    .min_height(round_ui(250.0))
+  egui::Panel::bottom("bottom_panel")
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
+    .min_size(round_ui(250.0))
     .show_animated_inside(ui, bottom_visible, |ui| {
       panel_bottom::show(ui, world)
     });
 
   egui::CentralPanel::default()
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
     .show_inside(ui, |ui| view::show(ui, world));
 }

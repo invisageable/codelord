@@ -1049,16 +1049,16 @@ fn show_empty_state(
   world: &mut World,
   show_instructions: bool,
 ) {
+  use egui::emath::GuiRounding as _;
+
   let available_rect = ui.available_rect_before_wrap();
 
-  // Make full area clickable for double-click to create new tab.
-  let response = ui.allocate_rect(available_rect, egui::Sense::click());
-  if response.double_clicked() {
-    world.spawn(codelord_core::events::NewEditorTabRequest);
-  }
-
-  // Only show instructions for editor tabs, not playground.
   if !show_instructions {
+    // Make full area clickable for double-click to create new tab.
+    let response = ui.allocate_rect(available_rect, egui::Sense::click());
+    if response.double_clicked() {
+      world.spawn(codelord_core::events::NewEditorTabRequest);
+    }
     return;
   }
 
@@ -1068,7 +1068,18 @@ fn show_empty_state(
   let centered_rect = egui::Rect::from_center_size(
     available_rect.center(),
     egui::vec2(INSTRUCTIONS_WIDTH, INSTRUCTIONS_HEIGHT),
+  )
+  .round_ui();
+
+  // Background: clickable area for double-click to create new tab.
+  let response = ui.interact(
+    available_rect,
+    ui.id().with("empty_state_bg"),
+    egui::Sense::click(),
   );
+  if response.double_clicked() {
+    world.spawn(codelord_core::events::NewEditorTabRequest);
+  }
 
   ui.scope_builder(egui::UiBuilder::new().max_rect(centered_rect), |ui| {
     ui.set_width(INSTRUCTIONS_WIDTH);

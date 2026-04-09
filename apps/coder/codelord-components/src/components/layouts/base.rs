@@ -57,18 +57,38 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
       }
     };
 
-    // Render from page (sliding out)
+    // Each page renders on its own layer during transition.
+    // The warn_if_rect_changes_id check is per-layer, so
+    // widgets from different pages never collide.
+
     if from_rect.intersects(available_rect) {
-      ui.scope_builder(egui::UiBuilder::new().max_rect(from_rect), |ui| {
-        render_page(ui, &from_page, world);
-      });
+      ui.scope_builder(
+        egui::UiBuilder::new()
+          .layer_id(egui::LayerId::new(
+            egui::Order::Middle,
+            egui::Id::new("page_transition_from"),
+          ))
+          .max_rect(from_rect),
+        |ui| {
+          ui.set_clip_rect(available_rect);
+          render_page(ui, &from_page, world);
+        },
+      );
     }
 
-    // Render to page (sliding in)
     if to_rect.intersects(available_rect) {
-      ui.scope_builder(egui::UiBuilder::new().max_rect(to_rect), |ui| {
-        render_page(ui, &to_page, world);
-      });
+      ui.scope_builder(
+        egui::UiBuilder::new()
+          .layer_id(egui::LayerId::new(
+            egui::Order::Middle,
+            egui::Id::new("page_transition_to"),
+          ))
+          .max_rect(to_rect),
+        |ui| {
+          ui.set_clip_rect(available_rect);
+          render_page(ui, &to_page, world);
+        },
+      );
     }
   } else {
     // No transition - render active page normally

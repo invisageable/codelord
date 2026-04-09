@@ -235,8 +235,8 @@ impl WaveRenderResources {
     let wave_pipeline_layout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("wave_pipeline_layout"),
-        bind_group_layouts: &[&wave_bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(&wave_bind_group_layout)],
+        immediate_size: 0,
       });
 
     let wave_pipeline =
@@ -269,7 +269,7 @@ impl WaveRenderResources {
           mask: !0,
           alpha_to_coverage_enabled: false,
         },
-        multiview: None,
+        multiview_mask: None,
         cache: None,
       });
 
@@ -316,8 +316,8 @@ impl WaveRenderResources {
     let blit_pipeline_layout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("blit_pipeline_layout"),
-        bind_group_layouts: &[&blit_bind_group_layout],
-        push_constant_ranges: &[],
+        bind_group_layouts: &[Some(&blit_bind_group_layout)],
+        immediate_size: 0,
       });
 
     let blit_pipeline =
@@ -343,7 +343,7 @@ impl WaveRenderResources {
         primitive: wgpu::PrimitiveState::default(),
         depth_stencil: None,
         multisample: wgpu::MultisampleState::default(),
-        multiview: None,
+        multiview_mask: None,
         cache: None,
       });
 
@@ -490,6 +490,7 @@ impl WaveRenderResources {
           depth_stencil_attachment: None,
           timestamp_writes: None,
           occlusion_query_set: None,
+          multiview_mask: None,
         });
 
       render_pass.set_pipeline(&self.wave_pipeline);

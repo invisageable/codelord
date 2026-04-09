@@ -11,19 +11,25 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     .unwrap_or(false);
 
   if has_project {
-    egui::TopBottomPanel::top("explorer_header")
-      .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-      .exact_height(24.0)
+    egui::Panel::top("explorer_header")
+      .frame(
+        egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+      )
+      .exact_size(24.0)
       .resizable(false)
       .show_separator_line(true)
       .show_inside(ui, |ui| header::show(ui, world));
 
     egui::CentralPanel::default()
-      .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+      .frame(
+        egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+      )
       .show_inside(ui, |ui| file_tree::show(ui, world));
   } else {
     egui::CentralPanel::default()
-      .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+      .frame(
+        egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill),
+      )
       .show_inside(ui, |ui| open_project::show(ui, world));
   }
 }
@@ -644,7 +650,7 @@ pub mod file_tree {
           text_rect,
           egui::TextEdit::singleline(&mut text)
             .font(egui::FontId::new(12.0, egui::FontFamily::Proportional))
-            .frame(true)
+            .frame(egui::Frame::default())
             .margin(egui::Margin::symmetric(4, 2)),
         );
 
@@ -859,7 +865,7 @@ pub mod file_tree {
       text_rect,
       egui::TextEdit::singleline(&mut text)
         .font(egui::FontId::new(12.0, egui::FontFamily::Proportional))
-        .frame(true)
+        .frame(egui::Frame::default())
         .margin(egui::Margin::symmetric(4, 2)),
     );
 

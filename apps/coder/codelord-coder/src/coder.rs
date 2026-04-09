@@ -997,6 +997,12 @@ impl eframe::App for Coder {
     egui::Color32::TRANSPARENT.to_normalized_gamma_f32()
   }
 
+  fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    self.show(ui);
+  }
+
+  // TODO(egui-0.34): move logic to logic(), UI to ui(), remove update().
+  #[allow(deprecated)]
   fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
     frame_history::record_frame_time(ctx, frame);
 
@@ -1781,11 +1787,6 @@ impl eframe::App for Coder {
     ctx.set_visuals(visuals);
 
     // ========================================================================
-    // Render UI
-    // ========================================================================
-    self.show(ctx);
-
-    // ========================================================================
     // HTML Preview WebView Integration (after UI rendered, rect available)
     // ========================================================================
     #[cfg(not(target_arch = "wasm32"))]
@@ -1958,7 +1959,9 @@ impl eframe::App for Coder {
 }
 
 impl Coder {
-  fn show(&mut self, ctx: &egui::Context) {
+  fn show(&mut self, ui: &mut egui::Ui) {
+    let ctx = ui.ctx().clone();
+
     // Draw app border (on top of everything)
     let content_rect = ctx.input(|i| i.viewport_rect());
     let border_color = egui::Color32::from_gray(30);
@@ -1975,16 +1978,16 @@ impl Coder {
         egui::StrokeKind::Middle,
       );
 
-    egui::TopBottomPanel::top("titlebar")
-      .exact_height(28.0)
+    egui::Panel::top("titlebar")
+      .exact_size(28.0)
       .frame(
         egui::Frame::NONE
           .corner_radius(radius::symmetric(10, 0))
-          .fill(ctx.style().visuals.window_fill)
+          .fill(ctx.global_style().visuals.window_fill)
           // .inner_margin(egui::Margin::symmetric(8, 0)),
       )
       .show_separator_line(false)
-      .show(ctx, |ui| {
+      .show_inside(ui, |ui| {
         titlebar::show(ui, &mut self.world);
         self.render_header_separator(ui);
       });
@@ -1997,11 +2000,11 @@ impl Coder {
         .map(|s| (s.visible, s.query.is_empty()))
         .unwrap_or((false, true));
 
-      egui::TopBottomPanel::top("search_panel")
+      egui::Panel::top("search_panel")
         .resizable(false)
-        .exact_height(50.0)
-        .frame(egui::Frame::NONE.fill(ctx.style().visuals.window_fill))
-        .show_animated(ctx, search_visible, |ui| {
+        .exact_size(50.0)
+        .frame(egui::Frame::NONE.fill(ctx.global_style().visuals.window_fill))
+        .show_animated_inside(ui, search_visible, |ui| {
           search_panel::show(ui, &mut self.world);
         });
 
@@ -2016,15 +2019,15 @@ impl Coder {
       }
     }
 
-    egui::TopBottomPanel::bottom("statusbar")
-      .exact_height(28.0)
+    egui::Panel::bottom("statusbar")
+      .exact_size(28.0)
       .frame(
         egui::Frame::NONE
           .corner_radius(radius::symmetric(0, 10))
-          .fill(ctx.style().visuals.window_fill)
+          .fill(ctx.global_style().visuals.window_fill)
           .inner_margin(egui::Margin::symmetric(8, 0)),
       )
-      .show(ctx, |ui| statusbar::show(ui, &mut self.world));
+      .show_inside(ui, |ui| statusbar::show(ui, &mut self.world));
 
     // Music player panel (above statusbar).
     // Get animated height for playlist expansion.
@@ -2034,14 +2037,14 @@ impl Coder {
       .map(|s| s.height_animation.current_value())
       .unwrap_or(40.0);
 
-    egui::TopBottomPanel::bottom("music_player")
-      .exact_height(music_player_height)
+    egui::Panel::bottom("music_player")
+      .exact_size(music_player_height)
       .frame(
         egui::Frame::NONE
-          .fill(ctx.style().visuals.window_fill)
+          .fill(ctx.global_style().visuals.window_fill)
           .inner_margin(egui::Margin::symmetric(0, 0)),
       )
-      .show(ctx, |ui| {
+      .show_inside(ui, |ui| {
         let rect = ui.max_rect();
         let separator_y = rect.top();
         let snapshot = audio::get_music_snapshot();
@@ -2147,25 +2150,25 @@ impl Coder {
       .fill(if zoom_margin > 0.0 {
         egui::Color32::WHITE
       } else {
-        ctx.style().visuals.window_fill
+        ctx.global_style().visuals.window_fill
       })
       .inner_margin(egui::Margin::same(margin_i8));
 
     egui::CentralPanel::default()
       .frame(central_frame)
-      .show(ctx, |ui| base::show(ui, &mut self.world));
+      .show_inside(ui, |ui| base::show(ui, &mut self.world));
 
-    overlays::popup::show(ctx, &mut self.world);
+    overlays::popup::show(&ctx, &mut self.world);
 
     // Render file picker overlay
     let file_picker_response =
-      overlays::file_picker::show(ctx, &mut self.world);
+      overlays::file_picker::show(&ctx, &mut self.world);
 
     self.handle_file_picker_response(file_picker_response);
 
     // Render unsaved changes dialog
     let unsaved_response =
-      overlays::unsaved_changes_dialog::show(ctx, &mut self.world);
+      overlays::unsaved_changes_dialog::show(&ctx, &mut self.world);
 
     self.handle_unsaved_changes_response(unsaved_response);
 
@@ -2174,7 +2177,7 @@ impl Coder {
       .order(egui::Order::Foreground)
       .anchor(egui::Align2::RIGHT_TOP, egui::vec2(0.0, 0.0))
       .interactable(true)
-      .show(ctx, |ui| {
+      .show(&ctx, |ui| {
         let result = overlays::toaster::show(ui, &mut self.world);
 
         for id in result.dismissed_ids {

@@ -244,7 +244,7 @@ fn render_search_input(
       let text_edit = egui::TextEdit::singleline(&mut search_input)
         .desired_width(width - 120.0)
         .hint_text("Search files...")
-        .frame(false)
+        .frame(egui::Frame::NONE)
         .font(egui::TextStyle::Body);
 
       let edit_response = ui.add(text_edit);

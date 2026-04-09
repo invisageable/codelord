@@ -44,20 +44,20 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   let sqlite_preview = get_sqlite_preview_active(world);
   let xls_preview = get_xls_preview_active(world);
 
-  egui::TopBottomPanel::top("text_editor_tabbar")
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
-    .exact_height(24.0)
+  egui::Panel::top("text_editor_tabbar")
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
+    .exact_size(24.0)
     .resizable(false)
     .show_separator_line(true)
     .show_inside(ui, |ui| tabbar::show::<EditorTab>(ui, world));
 
-  egui::TopBottomPanel::top("text_editor_breadcrumbs")
+  egui::Panel::top("text_editor_breadcrumbs")
     .frame(
       egui::Frame::NONE
-        .fill(ui.ctx().style().visuals.window_fill)
+        .fill(ui.ctx().global_style().visuals.window_fill)
         .inner_margin(egui::Margin::symmetric(8, 0)),
     )
-    .exact_height(20.0)
+    .exact_size(20.0)
     .resizable(false)
     .show_separator_line(has_active_file)
     .show_animated_inside(ui, has_active_file, |ui| {
@@ -65,7 +65,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     });
 
   egui::CentralPanel::default()
-    .frame(egui::Frame::NONE.fill(ui.ctx().style().visuals.window_fill))
+    .frame(egui::Frame::NONE.fill(ui.ctx().global_style().visuals.window_fill))
     .show_inside(ui, |ui| {
       ui.set_width(ui.available_width());
       ui.set_height(ui.available_height());

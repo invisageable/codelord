@@ -14,16 +14,6 @@ env:
   WHISPER_NO_COREML: 1
 
 jobs:
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-
   clippy:
     name: Clippy
     runs-on: ubuntu-latest

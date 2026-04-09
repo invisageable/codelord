@@ -14,6 +14,7 @@ use codelord_core::instruction::components::{
 use codelord_core::instruction::resources::InstructionsResource;
 
 use eframe::egui;
+use egui::emath::GuiRounding as _;
 use egui_extras::{Column, TableBuilder};
 
 /// Shows all instruction sections from the ECS resource.
@@ -140,9 +141,9 @@ fn render_key_badge(
         .height()
       });
 
-      let badge_height = text_height + PADDING.y * 2.0;
-      // Width: icon + horizontal padding only
-      let total_size = egui::vec2(icon_size.x + PADDING.x * 2.0, badge_height);
+      let badge_height = (text_height + PADDING.y * 2.0).round_ui();
+      let total_size =
+        egui::vec2((icon_size.x + PADDING.x * 2.0).round_ui(), badge_height);
 
       let (rect, _response) =
         ui.allocate_exact_size(total_size, egui::Sense::hover());
@@ -181,12 +182,11 @@ fn render_key_badge(
         )
       });
 
-      let badge_size = text_galley.rect.size() + TEXT_PADDING * 2.0;
+      let badge_size =
+        (text_galley.rect.size() + TEXT_PADDING * 2.0).round_ui();
 
-      let (rect, _response) = ui.allocate_exact_size(
-        badge_size,
-        egui::Sense::hover(), // Make it hoverable for potential tooltips
-      );
+      let (rect, _response) =
+        ui.allocate_exact_size(badge_size, egui::Sense::hover());
 
       // Draw badge background
       ui.painter().rect(

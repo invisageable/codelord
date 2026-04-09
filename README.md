@@ -8,7 +8,9 @@
 
 > *codelord — Instantly code your thoughts.*
 
-[home](https://github.com/invisageable/zo) — [install](./notes/docs/README.md#install) — [speeches](notes/speeches) — [license](#license)  
+[home](https://github.com/invisageable/zo) — [install](./apps/coder/codelord-notes/public/guidelines/01-install.md) — [how-to](./apps/coder/codelord-how-to) — [license](#license)  
+
+![codelord interface overview](./codelord-assets/image/preview/preview-codelord-interface-overview.gif)
 
 ## warning.
 
@@ -32,35 +34,13 @@ codelord ISN'T JUST ANOTHER vscode FORK OR CLONE — iT'S A REiMAGiNATiON. NATiV
 
 JOiN THE DEVOLUTiON.
 
-## preview.
-
-FOR THE MOMENT, WE ARE iNVESTiNG OUR TiME FOCUSiNG ON THE USER EXPERiENCE AND iTS iNTERFACE TO SET codelord APART FROM ALL THOSE CODE EDiTORS WHO COMPLETELY NOT ALiGNED WiTH OUR ViSiON.
-
-> it's just a draft that's likely to evolve for the better. not for production use.
-
-![codelord interface overview](./codelord-assets/image/preview/preview-codelord-interface-overview.gif)
-
-> « iNTO THE TURFU WE GO. » — _compilords_.
-
-## ecosystem.
-
-THiS MONO-REPO POWERS AN ECOSYSTEM OF CRATES:
-
-**-apps**
-
-| NAME                     | DESCRiPTiON                                    |
-| :----------------------- | :--------------------------------------------- |
-| [codelord](./apps/coder) | THE NEXT-GEN CODE EDiTOR OS-LiKE, GPU-POWERED. |
-
 ## goals.
 
 - COMPiLER + CODE EDiTOR + METRiCS + iNTELLiGENCE — *in the same world*.
 - DATA-FiRST ARCHiTECTURE <sup>bevy-ecs</sup> — *inspired by game engine*.
 - GPU RENDERiNG <sup>egui</sup> — *low memory footprint, zero runtime fluff*.
 
-JOiN THE DEVOLUTiON.
-
-## comparison between existing code editor.
+### comparison between existing code editor.
 
 | features      | codelord    | zed         | cursor              | vscode        |
 | :------------ | :---------- | :---------- | :------------------ | :------------ |
@@ -86,14 +66,6 @@ STARS, DONATiON AND SPONSORS ARE WELCOMiNG. SPREAD THE WORD e-ve-ry-where.
 ## supports.
 
 iF THiS PROJECT RESONATES WiTH YOU — PLEASE STAR iT. iT HELPS US GROW, ATTRACTS CONTRiBUTORS, AND VALiDATES THE DiRECTiON.    
-
-## credits.
-
-THANKS TO:    
-
-[@ledruidd](https://github.com/ledruidd) [@SiegfriedEhret](https://github.com/SiegfriedEhret) [@akimd](https://github.com/akimd) [@graydon](https://github.com/graydon) [@rvirding](https://github.com/rvirding) [@worrydream](https://x.com/worrydream) [@j_blow](https://www.twitch.tv/j_blow) [@tsoding](https://x.com/tsoding) [@geohot](https://github.com/geohot) [@mike_acton](https://x.com/mike_acton)
-
-> « DE PRèS COMME DE LOIN VOUS M'AVEZ INSPIRé à MENER CE PROJET. TRiLU ! » — _i10e_.    
 
 ## license.
 

@@ -74,7 +74,7 @@ async fn compile(
 
     // Stage: Tokens (always runs).
     let start = std::time::Instant::now();
-    let tokenization = tokenize(&request.source);
+    let mut tokenization = tokenize(&request.source);
     let elapsed_time = start.elapsed().as_nanos() as f64 / 1_000_000.0;
     let tokens_json = serialize_tokens(&tokenization.tokens, &request.source);
 
@@ -120,7 +120,7 @@ async fn compile(
 
     // Stage: SIR.
     let start = std::time::Instant::now();
-    let semantic = analyze(&parsing.tree, &tokenization);
+    let semantic = analyze(&parsing.tree, &mut tokenization);
     let elapsed_time = start.elapsed().as_nanos() as f64 / 1_000_000.0;
     let sir_json = serialize_sir(&semantic.sir, &tokenization.interner);
 
@@ -314,9 +314,10 @@ fn serialize_tree(tree: &Tree, source: &str) -> String {
 /// Analyze parse tree to produce SIR.
 fn analyze(
   tree: &Tree,
-  tokenization: &TokenizationResult,
+  tokenization: &mut TokenizationResult,
 ) -> zo_analyzer::SemanticResult {
-  Analyzer::new(tree, &tokenization.interner, &tokenization.literals).analyze()
+  Analyzer::new(tree, &mut tokenization.interner, &tokenization.literals)
+    .analyze()
 }
 
 /// A SIR instruction for serialization.
@@ -340,16 +341,16 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
       .iter()
       .map(|insn| {
         let (kind, details) = match insn {
-          Insn::ConstInt { value, ty_id } => {
+          Insn::ConstInt { value, ty_id, .. } => {
             ("ConstInt".into(), format!("{value} : ty{}", ty_id.0))
           }
-          Insn::ConstFloat { value, ty_id } => {
+          Insn::ConstFloat { value, ty_id, .. } => {
             ("ConstFloat".into(), format!("{value} : ty{}", ty_id.0))
           }
-          Insn::ConstBool { value, ty_id } => {
+          Insn::ConstBool { value, ty_id, .. } => {
             ("ConstBool".into(), format!("{value} : ty{}", ty_id.0))
           }
-          Insn::ConstString { symbol, ty_id } => {
+          Insn::ConstString { symbol, ty_id, .. } => {
             let s = interner.get(*symbol);
             ("ConstString".into(), format!("\"{s}\" : ty{}", ty_id.0))
           }
@@ -358,6 +359,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
             ty_id,
             init,
             mutability,
+            ..
           } => {
             let n = interner.get(*name);
             let init_str =
@@ -379,6 +381,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
             params,
             return_ty,
             body_start,
+            ..
           } => {
             let n = interner.get(*name);
             let params_str: Vec<_> = params
@@ -401,7 +404,9 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
             let v = value.map(|v| format!("v{}", v.0)).unwrap_or("void".into());
             ("Return".into(), format!("{v} : ty{}", ty_id.0))
           }
-          Insn::Call { name, args, ty_id } => {
+          Insn::Call {
+            name, args, ty_id, ..
+          } => {
             let n = interner.get(*name);
             let args_str: Vec<_> =
               args.iter().map(|a| format!("v{}", a.0)).collect();
@@ -412,7 +417,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
           }
           Insn::Load { dst, src, ty_id } => (
             "Load".into(),
-            format!("v{} = param[{src}] : ty{}", dst.0, ty_id.0),
+            format!("v{} = param[{src:?}] : ty{}", dst.0, ty_id.0),
           ),
           Insn::BinOp {
             dst,
@@ -440,6 +445,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
               BinOp::BitXor => "^",
               BinOp::Shl => "<<",
               BinOp::Shr => ">>",
+              BinOp::Concat => "++",
             };
             (
               "BinOp".into(),
@@ -449,7 +455,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
               ),
             )
           }
-          Insn::UnOp { op, rhs, ty_id } => {
+          Insn::UnOp { op, rhs, ty_id, .. } => {
             let op_str = match op {
               UnOp::Neg => "-",
               UnOp::Not => "!",
@@ -483,6 +489,7 @@ fn serialize_sir(sir: &Sir, interner: &zo_interner::Interner) -> String {
               ),
             )
           }
+          other => ("Unknown".into(), format!("{other:?}")),
         };
         SirInsn { kind, details }
       })

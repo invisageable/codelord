@@ -126,7 +126,7 @@ pub fn base_font_definitions() -> egui::FontDefinitions {
 pub fn install_fonts(ctx: &egui::Context) {
   ctx.set_fonts(base_font_definitions());
 
-  ctx.style_mut(|style| {
+  ctx.global_style_mut(|style| {
     style.text_styles.insert(
       egui::TextStyle::Monospace,
       egui::FontId::new(12.0, egui::FontFamily::Monospace),

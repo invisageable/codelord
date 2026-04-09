@@ -35,9 +35,9 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   let separator_color = visuals.widgets.noninteractive.bg_stroke.color;
 
   // Tabbar panel at the top.
-  egui::TopBottomPanel::top("playground_tabbar")
+  egui::Panel::top("playground_tabbar")
     .frame(egui::Frame::NONE.fill(visuals.window_fill))
-    .exact_height(24.0)
+    .exact_size(24.0)
     .resizable(false)
     .show_separator_line(true)
     .show_inside(ui, |ui| tabbar::show::<PlaygroundTab>(ui, world));
