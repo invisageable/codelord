@@ -135,21 +135,27 @@ jobs:
 
       - name: Download pdfium (Windows)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          curl -L -o "$RUNNER_TEMP/pdfium.tgz" "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz"
-          mkdir -p "$RUNNER_TEMP/pdfium-extract"
-          tar -xzf "$RUNNER_TEMP/pdfium.tgz" -C "$RUNNER_TEMP/pdfium-extract"
+          $tgz = "$env:RUNNER_TEMP\pdfium.tgz"
+          $extract = "$env:RUNNER_TEMP\pdfium-extract"
+          Invoke-WebRequest -Uri "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz" -OutFile $tgz
+          New-Item -ItemType Directory -Force -Path $extract
+          tar -xzf $tgz -C $extract
+          Write-Host "Pdfium extracted contents:"
+          Get-ChildItem -Recurse $extract | Select-Object FullName
 
       - name: Package Windows
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/codelord.exe dist/
-          cp "$RUNNER_TEMP/pdfium-extract/lib/pdfium.dll" dist/
+          $pdfiumDll = Get-ChildItem -Recurse "$env:RUNNER_TEMP\pdfium-extract" -Filter "pdfium.dll" | Select-Object -First 1
+          if (-not $pdfiumDll) { throw "pdfium.dll not found" }
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target/${{ matrix.target }}/release/codelord.exe" dist/
+          Copy-Item $pdfiumDll.FullName dist/
           cd dist
-          7z a "$GITHUB_WORKSPACE/${{ matrix.artifact }}-${{ github.ref_name }}.zip" codelord.exe pdfium.dll
+          7z a "$env:GITHUB_WORKSPACE/${{ matrix.artifact }}-${{ github.ref_name }}.zip" codelord.exe pdfium.dll
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

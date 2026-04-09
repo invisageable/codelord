@@ -10,17 +10,13 @@
 
 [home](https://github.com/invisageable/zo) — [install](./apps/coder/codelord-notes/public/guidelines/01-install.md) — [how-to](./apps/coder/codelord-how-to) — [license](#license)  
 
-![codelord interface overview](./codelord-assets/image/preview/preview-codelord-interface-overview.gif)
+![codelord-interface-overview](./apps/coder/codelord-assets/images/preview/preview-codelord-interface-overview.gif)
 
 ## warning.
 
 **wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip.**
 
 THiS iS A LiViNG PROJECT, FORGED iN THE OPEN. EXPECT ROUGH EDGES AND RADiCAL iDEAS.   
-
-WE ARE BUiLDiNG THE CATHEDRAL. THE FOUNDATiON iS LAiD, BUT THE SPiRES ARE STiLL REACHiNG FOR THE SKY. iF YOU ARE A PiONEER, A BUiLDER, OR A FELLOW COMPiLER NERD, YOU'VE ARRiVED AT THE PERFECT TiME.   
-
-JOiN THE DEVOLUTiON.  
 
 **wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip.**  
 
@@ -35,12 +31,6 @@ codelord ISN'T JUST ANOTHER vscode FORK OR CLONE — iT'S A REiMAGiNATiON. NATiV
 JOiN THE DEVOLUTiON.
 
 ## goals.
-
-- COMPiLER + CODE EDiTOR + METRiCS + iNTELLiGENCE — *in the same world*.
-- DATA-FiRST ARCHiTECTURE <sup>bevy-ecs</sup> — *inspired by game engine*.
-- GPU RENDERiNG <sup>egui</sup> — *low memory footprint, zero runtime fluff*.
-
-### comparison between existing code editor.
 
 | features      | codelord    | zed         | cursor              | vscode        |
 | :------------ | :---------- | :---------- | :------------------ | :------------ |
