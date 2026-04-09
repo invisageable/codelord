@@ -1,30 +1,10 @@
 # apps — coder.
 
-> *the next-gen code editor os-like for hackers*.
+> *Understanding the whole codelord's architecture.*
 
-## about.
+## dev.
 
-> *codelord doesn't care of your level, his role is to make you better day after day*.
-
-codelord iS A PROGRAMMABLE CODE EDiTOR OS-LiKE FOR DEVS. RECLAiM THE DEVELOPER'S FLOW WiTH A HiGH-PERFORMANCE, GPU-NATiVE CODE EDiTOR THAT RESPECTS YOUR MACHiNE, YOUR PRiVACY, AND YOUR THiNKiNG PROCESS.   
-
-codelord iS FULL NATiVE CODE EDiTOR WiTHOUT electron BLOAT AND WiTH A MiNiMAL MEMORY FOOTPRiNT. THE TELEMETRY iSN'T FOR US BUT FOR YOU. iT WiLL HELPS YOU TO BECOME MORE EFFiCiENT iN PROGRAMMiNG.
-
-codelord ISN'T JUST ANOTHER vscode FORK OR CLONE — iT'S A REiMAGiNATiON. NATiVE GPU RENDERiNG, REPL-POWERED WORKFLOWS, REAL-TiME COLLABORATiON, AND A PLUGiN RUNTiME GiVE YOU SUPERPOWERS iN A CLEAN, MiNiMAL iNTERFACE. ALL WHiLE STAYiNG LiGHT, LOCAL-FiRST, AND PRiVACY-RESPECTiNG.
-
-JOiN THE DEVOLUTiON.
-
-## preview.
-
-FOR THE MOMENT, WE ARE iNVESTiNG OUR TiME FOCUSiNG ON THE USER EXPERiENCE AND iTS iNTERFACE TO SET codelord APART FROM ALL THOSE CODE EDiTORS WHO COMPLETELY NOT ALiGNED WiTH OUR ViSiON.
-
-> it's just a draft that's likely to evolve for the better. not for production use.
-
-![codelord interface overview](./codelord-assets/image/preview/preview-codelord-interface-overview.gif)
-
-> « iNTO THE TURFU WE GO. » — _compilords_.
-
-## logging.
+### logging.
 
 WE USE THE RUST `log` CRATE FOR STRUCTURED LOGGiNG. CONTROL LOG OUTPUT USiNG THE `RUST_LOG` ENViRONMENT VARiABLE:
 
@@ -43,20 +23,7 @@ RUST_LOG=codelord_coder=debug cargo run --package codelord
 RUST_LOG=codelord_coder=debug,codelord_data=info cargo run --package codelord
 ```
 
-## best existing code editor.
-
-| features      | codelord    | zed         | cursor              | vscode        |
-| :------------ | :---------- | :---------- | :------------------ | :------------ |
-| FOUNDATION    | rust + egui | rust + gpui | vscodium + electron | electron      |
-| SiZE          | 34 MB       | 321 MB      | 458 MB              | 664 MB        |
-| UX/Ui         | GAME-LiKE   | STANDARD    | STANDARD            | STANDARD      |
-| Ai            | Ai PARTNER  | Ai WRAPPER  | Ai WRAPPER          | Ai COMPLETiON |
-| PLAYGROUND    | ✅          | ❌          | ❌                  | ❌            |
-| VOiCE CONTROL | ✅          | ❌          | ❌                  | ❌            |
-| PRESENTER     | ✅          | ❌          | ❌                  | ❌            |
-| EASTER EGGS   | ✅          | ❌          | ❌                  | ❌            |
-
-## builtin features.
+### builtin features.
 
 **viewer**
 
