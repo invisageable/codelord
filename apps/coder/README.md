@@ -25,7 +25,15 @@ RUST_LOG=codelord_coder=debug,codelord_data=info cargo run --package codelord
 
 ### builtin features.
 
+**playground**
+
+<img src="./codelord-notes/public/assets/codelord-preview-playground.png" />
+
+...
+
 **viewer**
+
+<img src="./codelord-notes/public/assets/codelord-preview-html.png" />
 
 - FONT ViEWER — `.ttf`, `otf`.
 - PDF ViEWER — `pagination`, `zoom`.
@@ -38,6 +46,8 @@ RUST_LOG=codelord_coder=debug,codelord_data=info cargo run --package codelord
 
 **syntax higlighting**
 
+<img src="./codelord-notes/public/assets/codelord-preview-highlights.png" />
+
 codelord SUPPORTS ALL THESE TYPE OF FiLES BY DEFAULT:
 
 `bash`, `c`, `css`, `conf`, `csv`, `elixir`, `gleam`, `go`, `html`, `javascript`, `json`, `markdown`, `ocaml`, `python`, `toml`, `typescript`, `yaml`, `zig`, `zo`.
@@ -47,6 +57,8 @@ codelord SUPPORTS ALL THESE TYPE OF FiLES BY DEFAULT:
 THE SYMBOL TRACK SCROLLBAR iS AN iNNOVATiVE COMPONENT iN EDiTOR ViEW TO REPLACE THE MiNiMAP. iT PROViDES THE FULL SYMBOLS iN THE FiLE LiKE `items` and `statements`.
 
 **filescope**
+
+<img src="./codelord-notes/public/assets/codelord-preview-filescope.png" />
 
 iNSPIRED BY ViM'S TELESCOPE, FiLESCOPE iT'S A FASTEST FiLE FINDER THAT'S LET YOU SEARCH ANY FiLES iN YOUR WORKSPACE.
 
