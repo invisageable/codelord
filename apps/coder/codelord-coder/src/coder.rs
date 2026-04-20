@@ -2019,7 +2019,7 @@ impl Coder {
       .rect_stroke(
         content_rect,
         10.0,
-        egui::Stroke::new(1.0, border_color),
+        egui::Stroke::new(1.0_f32, border_color),
         egui::StrokeKind::Middle,
       );
 
@@ -2154,7 +2154,7 @@ impl Coder {
             egui::pos2(rect.left(), separator_y),
             egui::pos2(rect.left() + total_width, separator_y),
           ],
-          egui::Stroke::new(1.0, egui::Color32::from_rgb(60, 60, 60)),
+          egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(60, 60, 60)),
         );
 
         // Progress bar current position (lime green).
@@ -2164,7 +2164,7 @@ impl Coder {
             egui::pos2(rect.left(), separator_y),
             egui::pos2(rect.left() + progress_width, separator_y),
           ],
-          egui::Stroke::new(3.0, egui::Color32::from_rgb(204, 253, 62)),
+          egui::Stroke::new(3.0_f32, egui::Color32::from_rgb(204, 253, 62)),
         );
 
         // Sync UI state with actual playback state from audio thread.
@@ -2365,7 +2365,7 @@ impl Coder {
         egui::pos2(rect.left(), separator_y),
         egui::pos2(rect.right(), separator_y),
       ],
-      egui::Stroke::new(1.0, egui::Color32::from_gray(30)),
+      egui::Stroke::new(1.0_f32, egui::Color32::from_gray(30)),
     );
 
     // Get voice status from ECS resource (pure ECS, no Arc<Mutex>)

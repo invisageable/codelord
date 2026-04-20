@@ -297,7 +297,7 @@ fn render_footer(ui: &mut egui::Ui, world: &World) {
           .family(egui::FontFamily::Name(font::SUISSE_INTL.into()))
           .color(secondary_color),
       )
-      .stroke(egui::Stroke::new(1.0, secondary_color))
+      .stroke(egui::Stroke::new(1.0_f32, secondary_color))
       .fill(egui::Color32::TRANSPARENT)
       .corner_radius(0.0);
 
@@ -379,7 +379,7 @@ fn render_footer_bottom(
                 .family(egui::FontFamily::Name(font::AEONIK.into()))
                 .color(text_color),
             )
-            .stroke(egui::Stroke::new(1.0, text_color))
+            .stroke(egui::Stroke::new(1.0_f32, text_color))
             .fill(egui::Color32::TRANSPARENT)
             .corner_radius(0.0)
             .min_size(egui::vec2(50.0, 40.0));

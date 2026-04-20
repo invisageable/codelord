@@ -98,7 +98,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> UnsavedChangesResponse {
 
       egui::Frame::new()
         .fill(bg_color)
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .corner_radius(0.0)
         .inner_margin(20.0)
         .show(ui, |ui| {

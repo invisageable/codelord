@@ -48,8 +48,11 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
         let (rect, _) =
           ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
         let center = rect.center();
-        ui.painter()
-          .circle_stroke(center, 4.0, egui::Stroke::new(2.0, color));
+        ui.painter().circle_stroke(
+          center,
+          4.0,
+          egui::Stroke::new(2.0_f32, color),
+        );
       }
       FeedbackState::Running => {
         let (rect, _) =
@@ -59,7 +62,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
         let angle = time * 4.0;
 
         let radius = 4.0;
-        let stroke = egui::Stroke::new(2.0, color);
+        let stroke = egui::Stroke::new(2.0_f32, color);
 
         let start_angle = angle;
         let end_angle = angle + std::f32::consts::PI * 1.5;

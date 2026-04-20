@@ -624,7 +624,7 @@ fn show_schema_view(ui: &mut egui::Ui, world: &World) {
       // Block 1: Table Overview
       // ====================================================================
       egui::Frame::NONE
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .corner_radius(4.0)
         .inner_margin(egui::Margin::same(12))
         .show(ui, |ui| {
@@ -707,7 +707,7 @@ fn show_schema_view(ui: &mut egui::Ui, world: &World) {
 
       egui::Frame::NONE
         .fill(egui::Color32::from_gray(25))
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .corner_radius(4.0)
         .inner_margin(egui::Margin::same(12))
         .show(ui, |ui| {

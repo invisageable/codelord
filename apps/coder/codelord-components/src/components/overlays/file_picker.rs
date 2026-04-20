@@ -127,7 +127,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
 
       egui::Frame::new()
         .fill(bg_color)
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .corner_radius(8.0)
         .show(ui, |ui| {
           ui.set_min_size(egui::vec2(dialog_width, dialog_height));

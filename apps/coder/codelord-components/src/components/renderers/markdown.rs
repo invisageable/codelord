@@ -39,7 +39,7 @@ impl MdRenderer {
     while x <= rect.right() {
       painter.line_segment(
         [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
-        egui::Stroke::new(1.0, GRID_COLOR),
+        egui::Stroke::new(1.0_f32, GRID_COLOR),
       );
       x += GRID_SIZE;
     }
@@ -49,7 +49,7 @@ impl MdRenderer {
     while y <= rect.bottom() {
       painter.line_segment(
         [egui::pos2(rect.left(), y), egui::pos2(rect.right(), y)],
-        egui::Stroke::new(1.0, GRID_COLOR),
+        egui::Stroke::new(1.0_f32, GRID_COLOR),
       );
       y += GRID_SIZE;
     }
@@ -164,7 +164,10 @@ impl MarkdownRenderer for MdRenderer {
               ui.painter().vline(
                 ui.cursor().left(),
                 ui.available_rect_before_wrap().y_range(),
-                egui::Stroke::new(3.0, egui::Color32::from_rgb(204, 253, 62)),
+                egui::Stroke::new(
+                  3.0_f32,
+                  egui::Color32::from_rgb(204, 253, 62),
+                ),
               );
               ui.add_space(12.0);
               ui.label(
@@ -277,7 +280,7 @@ impl MarkdownRenderer for MdRenderer {
           egui::pos2(rect.left(), ui.cursor().top()),
           egui::pos2(rect.right(), ui.cursor().top()),
         ],
-        egui::Stroke::new(1.0, egui::Color32::from_rgb(204, 253, 62)),
+        egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(204, 253, 62)),
       );
       ui.add_space(4.0);
     });

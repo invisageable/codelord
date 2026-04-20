@@ -62,7 +62,7 @@ fn render_section(ui: &mut egui::Ui, section: &InstructionSection) {
         egui::pos2(line_start_x, line_y),
         egui::pos2(line_end_x, line_y),
       ],
-      egui::Stroke::new(0.5, egui::Color32::from_gray(30)),
+      egui::Stroke::new(0.5_f32, egui::Color32::from_gray(30)),
     );
   });
 
@@ -153,7 +153,7 @@ fn render_key_badge(
         rect,
         0.0,
         visuals.widgets.inactive.bg_fill,
-        egui::Stroke::new(1.0, egui::Color32::TRANSPARENT),
+        egui::Stroke::new(1.0_f32, egui::Color32::TRANSPARENT),
         egui::epaint::StrokeKind::Outside,
       );
 
@@ -190,7 +190,7 @@ fn render_key_badge(
         rect,
         0.0,
         visuals.widgets.inactive.bg_fill,
-        egui::Stroke::new(1.0, egui::Color32::TRANSPARENT),
+        egui::Stroke::new(1.0_f32, egui::Color32::TRANSPARENT),
         egui::epaint::StrokeKind::Outside,
       );
 

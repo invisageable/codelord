@@ -200,7 +200,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
 
           // Search input with options
           egui::Frame::NONE
-            .stroke(egui::Stroke::new(1.0, weak_color))
+            .stroke(egui::Stroke::new(1.0_f32, weak_color))
             .corner_radius(0.0)
             .inner_margin(egui::Margin::same(4))
             .show(ui, |ui| {
@@ -310,7 +310,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
               )
               .fill(egui::Color32::TRANSPARENT)
               .frame(false)
-              .stroke(egui::Stroke::new(1.0, weak_color))
+              .stroke(egui::Stroke::new(1.0_f32, weak_color))
               .corner_radius(0.0)
               .min_size(egui::vec2(32.0, 32.0)),
             )
@@ -329,7 +329,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
               )
               .fill(egui::Color32::TRANSPARENT)
               .frame(false)
-              .stroke(egui::Stroke::new(1.0, weak_color))
+              .stroke(egui::Stroke::new(1.0_f32, weak_color))
               .corner_radius(0.0)
               .min_size(egui::vec2(32.0, 32.0)),
             )

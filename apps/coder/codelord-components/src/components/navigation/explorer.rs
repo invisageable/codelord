@@ -449,7 +449,7 @@ pub mod file_tree {
       return;
     }
 
-    let line_stroke = egui::Stroke::new(1.0, line_color);
+    let line_stroke = egui::Stroke::new(1.0_f32, line_color);
 
     for (i, entry) in entry_infos.iter().enumerate() {
       if entry.depth == 0 {

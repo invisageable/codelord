@@ -434,7 +434,7 @@ fn render_header(
         egui::pos2(line_start_x, center_y),
         egui::pos2(header_rect.right() - PADDING, center_y),
       ],
-      egui::Stroke::new(1.0, egui::Color32::from_gray(30)),
+      egui::Stroke::new(1.0_f32, egui::Color32::from_gray(30)),
     );
   });
 }
@@ -514,7 +514,7 @@ fn render_left_column(
                   egui::pos2(line_start, rect.center().y),
                   egui::pos2(rect.right(), rect.center().y),
                 ],
-                egui::Stroke::new(1.0, egui::Color32::from_gray(30)),
+                egui::Stroke::new(1.0_f32, egui::Color32::from_gray(30)),
               );
 
               if response.clicked()
@@ -740,7 +740,7 @@ fn render_action_button(
   ui.painter().rect_stroke(
     rect,
     egui::CornerRadius::same(4),
-    egui::Stroke::new(1.0, primary_color),
+    egui::Stroke::new(1.0_f32, primary_color),
     egui::StrokeKind::Inside,
   );
 

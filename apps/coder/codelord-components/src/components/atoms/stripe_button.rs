@@ -97,7 +97,7 @@ pub fn show_styled(
     ui.painter().rect_stroke(
       button_rect,
       egui::CornerRadius::ZERO,
-      egui::Stroke::new(1.0, border_color),
+      egui::Stroke::new(1.0_f32, border_color),
       egui::StrokeKind::Outside,
     );
 
@@ -109,7 +109,7 @@ pub fn show_styled(
     ui.painter().rect_stroke(
       button_rect,
       egui::CornerRadius::ZERO,
-      egui::Stroke::new(1.0, egui::Color32::from_gray(50)),
+      egui::Stroke::new(1.0_f32, egui::Color32::from_gray(50)),
       egui::StrokeKind::Outside,
     );
   }

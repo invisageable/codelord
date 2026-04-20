@@ -312,9 +312,12 @@ fn show_slcodelord_thumbnails(ui: &mut egui::Ui, world: &mut World) {
               rounding,
               egui::Color32::from_gray(15),
               if is_current {
-                egui::Stroke::new(3.0, egui::Color32::from_rgb(60, 130, 240))
+                egui::Stroke::new(
+                  3.0_f32,
+                  egui::Color32::from_rgb(60, 130, 240),
+                )
               } else {
-                egui::Stroke::new(1.0, egui::Color32::from_gray(50))
+                egui::Stroke::new(1.0_f32, egui::Color32::from_gray(50))
               },
               egui::StrokeKind::Outside,
             );

@@ -45,7 +45,7 @@ pub fn show(
     painter.rect_stroke(
       rect,
       0.0,
-      egui::Stroke::new(1.0, egui::Color32::from_gray(40)),
+      egui::Stroke::new(1.0_f32, egui::Color32::from_gray(40)),
       egui::StrokeKind::Outside,
     );
 

@@ -85,7 +85,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World, entity: Entity) {
         .frame(
           egui::Frame::popup(ui.style())
             .corner_radius(egui::CornerRadius::ZERO)
-            .stroke(egui::Stroke::new(1.0, stroke_color)),
+            .stroke(egui::Stroke::new(1.0_f32, stroke_color)),
         )
         .show(|ui| {
           ui.set_width(200.0);
