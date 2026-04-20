@@ -21,7 +21,7 @@ authors = ["the compilords team"]
 edition = "2024"
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/compilords/codelord"
-version = "0.0.0"
+version = "0.0.1"
 
 [workspace.dependencies]
 # internal:sources.
@@ -69,19 +69,19 @@ zo-writer = { git = "https://github.com/invisageable/zo" }
 zo-writer-macho = { git = "https://github.com/invisageable/zo" }
 
 # internal:apps:codelord.
-codelord = { path = "apps/coder/codelord", version = "0.0.0" }
-codelord-audio = { path = "apps/coder/codelord-audio", version = "0.0.0" }
-codelord-coder = { path = "apps/coder/codelord-coder", version = "0.0.0" }
-codelord-components = { path = "apps/coder/codelord-components", version = "0.0.0" }
-codelord-core = { path = "apps/coder/codelord-core", version = "0.0.0" }
-codelord-git = { path = "apps/coder/codelord-git", version = "0.0.0" }
-codelord-i18n = { path = "apps/coder/codelord-i18n", version = "0.0.0" }
-codelord-language = { path = "apps/coder/codelord-language", version = "0.0.0" }
-codelord-runtime = { path = "apps/coder/codelord-runtime", version = "0.0.0" }
-codelord-protocol = { path = "apps/coder/codelord-protocol", version = "0.0.0" }
-codelord-server = { path = "apps/coder/codelord-server", version = "0.0.0" }
-codelord-sdk = { path = "apps/coder/codelord-sdk", version = "0.0.0" }
-codelord-voice = { path = "apps/coder/codelord-voice", version = "0.0.0" }
+codelord = { path = "apps/coder/codelord", version = "0.0.1" }
+codelord-audio = { path = "apps/coder/codelord-audio", version = "0.0.1" }
+codelord-coder = { path = "apps/coder/codelord-coder", version = "0.0.1" }
+codelord-components = { path = "apps/coder/codelord-components", version = "0.0.1" }
+codelord-core = { path = "apps/coder/codelord-core", version = "0.0.1" }
+codelord-git = { path = "apps/coder/codelord-git", version = "0.0.1" }
+codelord-i18n = { path = "apps/coder/codelord-i18n", version = "0.0.1" }
+codelord-language = { path = "apps/coder/codelord-language", version = "0.0.1" }
+codelord-runtime = { path = "apps/coder/codelord-runtime", version = "0.0.1" }
+codelord-protocol = { path = "apps/coder/codelord-protocol", version = "0.0.1" }
+codelord-server = { path = "apps/coder/codelord-server", version = "0.0.1" }
+codelord-sdk = { path = "apps/coder/codelord-sdk", version = "0.0.1" }
+codelord-voice = { path = "apps/coder/codelord-voice", version = "0.0.1" }
 
 # external:crates.
 aho-corasick = "1.1.4"
