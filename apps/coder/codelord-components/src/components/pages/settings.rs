@@ -385,8 +385,7 @@ fn render_header(
     let center_y = header_rect.center().y;
     let mut current_x = header_rect.left() + PADDING;
 
-    let font_id =
-      egui::FontId::new(28.0, egui::FontFamily::Name(font::SUISSE_INTL.into()));
+    let font_id = font::suisse(28.0);
 
     // "SETTiNGS"
     ui.painter().text(
@@ -491,10 +490,7 @@ fn render_left_column(
                 egui::pos2(rect.left(), rect.center().y),
                 egui::Align2::LEFT_CENTER,
                 category.name(),
-                egui::FontId::new(
-                  14.0,
-                  egui::FontFamily::Name(font::SUISSE_INTL.into()),
-                ),
+                font::suisse(14.0),
                 color,
               );
 
@@ -753,7 +749,7 @@ fn render_action_button(
     rect.center(),
     egui::Align2::CENTER_CENTER,
     action_label,
-    egui::FontId::new(10.0, egui::FontFamily::Name(font::SUISSE_INTL.into())),
+    font::suisse(10.0),
     primary_color,
   );
 }

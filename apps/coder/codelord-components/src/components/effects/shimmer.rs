@@ -29,8 +29,7 @@ pub fn show(
     theme.primary[3],
   );
 
-  let font_id =
-    egui::FontId::new(font_size, egui::FontFamily::Name(font::AEONIK.into()));
+  let font_id = font::aeonik(font_size);
 
   // Pre-calculate text width
   let text_width = ui.fonts_mut(|f| {

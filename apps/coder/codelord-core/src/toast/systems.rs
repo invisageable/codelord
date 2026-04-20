@@ -2,6 +2,8 @@
 
 use super::resources::{DismissToastCommand, ToastCommand, ToasterResource};
 
+use crate::time;
+
 use bevy_ecs::message::MessageReader;
 use bevy_ecs::system::ResMut;
 
@@ -27,10 +29,5 @@ pub fn process_dismiss_commands(
 
 /// System to update toast animations each frame.
 pub fn update_toast_animations(mut toaster: ResMut<ToasterResource>) {
-  let current_time = std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .unwrap()
-    .as_millis() as u64;
-
-  toaster.update(current_time);
+  toaster.update(time::current_time_ms());
 }

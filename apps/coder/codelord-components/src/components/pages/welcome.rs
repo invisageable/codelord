@@ -56,10 +56,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
 fn render_logo(ui: &mut egui::Ui, text_color: egui::Color32) {
   ui.label(
     egui::RichText::new("WELCOME TO")
-      .font(egui::FontId::new(
-        48.0,
-        egui::FontFamily::Name(font::SUISSE_INTL.into()),
-      ))
+      .font(font::suisse(48.0))
       .color(text_color)
       .extra_letter_spacing(2.0)
       .line_height(Some(32.0)),
@@ -70,10 +67,7 @@ fn render_logo(ui: &mut egui::Ui, text_color: egui::Color32) {
     "code",
     0.0,
     egui::TextFormat {
-      font_id: egui::FontId::new(
-        90.0,
-        egui::FontFamily::Name(font::AEONIK.into()),
-      ),
+      font_id: font::aeonik(90.0),
       color: text_color,
       extra_letter_spacing: -4.0,
       ..Default::default()
@@ -83,10 +77,7 @@ fn render_logo(ui: &mut egui::Ui, text_color: egui::Color32) {
     "lord",
     0.0,
     egui::TextFormat {
-      font_id: egui::FontId::new(
-        100.0,
-        egui::FontFamily::Name(font::CIRKA.into()),
-      ),
+      font_id: font::cirka(100.0),
       color: text_color,
       extra_letter_spacing: -4.0,
       line_height: Some(118.0),

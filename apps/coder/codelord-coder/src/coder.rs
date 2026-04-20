@@ -31,6 +31,9 @@ use codelord_core::icon::components::{
 use codelord_core::keyboard;
 use codelord_core::keyboard::{Focusable, KeyboardFocus, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
+use codelord_core::magic_zoom::{
+  MagicZoomCommand, MagicZoomState, update_magic_zoom_system,
+};
 use codelord_core::navigation;
 use codelord_core::navigation::resources::{
   ActiveWorkspaceRoot, BreadcrumbData, ExplorerContextTarget,
@@ -445,6 +448,10 @@ impl Coder {
     world.insert_resource(XmbResource::new());
     world.init_resource::<Messages<XmbCommand>>();
 
+    // Magic zoom (Screen-Studio-style camera effect)
+    world.insert_resource(MagicZoomState::default());
+    world.init_resource::<Messages<MagicZoomCommand>>();
+
     // About resources
     world.insert_resource(AboutResource::default());
 
@@ -730,6 +737,9 @@ impl Coder {
       )
         .chain(),
     );
+
+    // Magic zoom camera update (reads DeltaTime, drains MagicZoomCommand).
+    schedule.add_systems(update_magic_zoom_system);
 
     // Navigation systems
     schedule.add_systems((
@@ -2154,9 +2164,41 @@ impl Coder {
       })
       .inner_margin(egui::Margin::same(margin_i8));
 
+    // Magic zoom: snapshot the camera once per frame, wrap the page area
+    // in a transformed layer when active. The skip-wrap fast path keeps
+    // the identity case zero-cost.
+    let (mz_zoom, mz_center) = {
+      let s = self.world.resource::<MagicZoomState>();
+      (s.zoom(), s.center())
+    };
+
     egui::CentralPanel::default()
       .frame(central_frame)
-      .show_inside(ui, |ui| base::show(ui, &mut self.world));
+      .show_inside(ui, |ui| {
+        if (mz_zoom - 1.0).abs() < 0.001 {
+          base::show(ui, &mut self.world);
+          return;
+        }
+
+        let layer_id = egui::LayerId::new(
+          egui::Order::Middle,
+          egui::Id::new("magic_zoom_layer"),
+        );
+
+        let cx = egui::vec2(mz_center.0, mz_center.1);
+        let transform = egui::emath::TSTransform::from_translation(cx)
+          * egui::emath::TSTransform::from_scaling(mz_zoom)
+          * egui::emath::TSTransform::from_translation(-cx);
+
+        ui.ctx().set_transform_layer(layer_id, transform);
+
+        ui.scope_builder(
+          egui::UiBuilder::new()
+            .layer_id(layer_id)
+            .max_rect(ui.available_rect_before_wrap()),
+          |ui| base::show(ui, &mut self.world),
+        );
+      });
 
     overlays::popup::show(&ctx, &mut self.world);
 
@@ -2273,6 +2315,31 @@ impl Coder {
         .world
         .resource_mut::<MusicPlayerState>()
         .toggle_visibility(time);
+    }
+
+    // Magic zoom: hold Cmd+E (Screen-Studio-style).
+    //
+    // Held-key, not toggle: matches the codelord "held-key modality"
+    // doctrine (like Cmd+Shift+Space for voice). Emit the command only on
+    // transition to avoid spamming Messages every frame; retarget the
+    // camera center each frame while held so the zoom follows the cursor.
+    let (want_engage, cursor) = ctx.input(|i| {
+      let held = i.modifiers.command && i.key_down(egui::Key::E);
+      let cursor = i.pointer.hover_pos().map(|p| (p.x, p.y));
+      (held, cursor)
+    });
+
+    let was_engaged = self.world.resource::<MagicZoomState>().engaged;
+
+    if was_engaged != want_engage {
+      self.world.write_message(MagicZoomCommand {
+        engage: want_engage,
+      });
+    } else if want_engage && let Some((x, y)) = cursor {
+      self
+        .world
+        .resource_mut::<MagicZoomState>()
+        .retarget_center(x, y);
     }
   }
 

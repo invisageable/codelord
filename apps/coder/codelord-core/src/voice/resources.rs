@@ -2,6 +2,8 @@
 
 use super::components::{VoiceAnimation, VoiceState};
 
+use crate::time::current_time_ms;
+
 use bevy_ecs::message::Message;
 use bevy_ecs::resource::Resource;
 
@@ -133,13 +135,6 @@ impl VoiceResource {
   pub fn should_show_indicator(&self) -> bool {
     self.state.is_active() || self.animation.opacity > 0.01
   }
-}
-
-fn current_time_ms() -> u64 {
-  std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .unwrap()
-    .as_millis() as u64
 }
 
 // ============================================================================
