@@ -1008,9 +1008,44 @@ impl eframe::App for Coder {
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    // Magic zoom: snapshot the camera once per frame; wrap the entire app
+    // body (titlebar, search, central, statusbar, music player) in a
+    // transformed layer when active. Overlays (popup, file picker, toasts)
+    // stay at 1x by design — they're rendered in `logic` via `Area`s that
+    // sit outside this CentralPanel. Skip-wrap keeps the identity case
+    // zero-cost.
+    let (mz_zoom, mz_center) = {
+      let s = self.world.resource::<MagicZoomState>();
+      (s.zoom(), s.center())
+    };
+
     egui::CentralPanel::default()
       .frame(egui::Frame::NONE)
-      .show_inside(ui, |ui| self.show(ui));
+      .show_inside(ui, |ui| {
+        if (mz_zoom - 1.0).abs() < 0.001 {
+          self.show(ui);
+          return;
+        }
+
+        let layer_id = egui::LayerId::new(
+          egui::Order::Middle,
+          egui::Id::new("magic_zoom_layer"),
+        );
+
+        let cx = egui::vec2(mz_center.0, mz_center.1);
+        let transform = egui::emath::TSTransform::from_translation(cx)
+          * egui::emath::TSTransform::from_scaling(mz_zoom)
+          * egui::emath::TSTransform::from_translation(-cx);
+
+        ui.ctx().set_transform_layer(layer_id, transform);
+
+        ui.scope_builder(
+          egui::UiBuilder::new()
+            .layer_id(layer_id)
+            .max_rect(ui.available_rect_before_wrap()),
+          |ui| self.show(ui),
+        );
+      });
   }
 
   fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
@@ -2164,41 +2199,9 @@ impl Coder {
       })
       .inner_margin(egui::Margin::same(margin_i8));
 
-    // Magic zoom: snapshot the camera once per frame, wrap the page area
-    // in a transformed layer when active. The skip-wrap fast path keeps
-    // the identity case zero-cost.
-    let (mz_zoom, mz_center) = {
-      let s = self.world.resource::<MagicZoomState>();
-      (s.zoom(), s.center())
-    };
-
     egui::CentralPanel::default()
       .frame(central_frame)
-      .show_inside(ui, |ui| {
-        if (mz_zoom - 1.0).abs() < 0.001 {
-          base::show(ui, &mut self.world);
-          return;
-        }
-
-        let layer_id = egui::LayerId::new(
-          egui::Order::Middle,
-          egui::Id::new("magic_zoom_layer"),
-        );
-
-        let cx = egui::vec2(mz_center.0, mz_center.1);
-        let transform = egui::emath::TSTransform::from_translation(cx)
-          * egui::emath::TSTransform::from_scaling(mz_zoom)
-          * egui::emath::TSTransform::from_translation(-cx);
-
-        ui.ctx().set_transform_layer(layer_id, transform);
-
-        ui.scope_builder(
-          egui::UiBuilder::new()
-            .layer_id(layer_id)
-            .max_rect(ui.available_rect_before_wrap()),
-          |ui| base::show(ui, &mut self.world),
-        );
-      });
+      .show_inside(ui, |ui| base::show(ui, &mut self.world));
 
     overlays::popup::show(&ctx, &mut self.world);
 

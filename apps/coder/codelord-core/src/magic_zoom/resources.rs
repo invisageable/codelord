@@ -4,8 +4,8 @@
 //! - Zoom factor: duration-based `eazy::Easing::InOutCubic` (discrete
 //!   engage/disengage event, like `animation/height.rs`).
 //! - Camera center: exponential smoothing (continuous cursor tracking —
-//!   duration-based easing would reset on every retarget and lag forever
-//!   behind a moving cursor).
+//!   duration-based easing would reset on every retarget and lag forever behind
+//!   a moving cursor).
 
 use bevy_ecs::resource::Resource;
 use eazy::{Curve, Easing};

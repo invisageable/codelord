@@ -2,6 +2,7 @@
 
 use super::messages::MagicZoomCommand;
 use super::resources::MagicZoomState;
+
 use crate::animation::components::DeltaTime;
 
 use bevy_ecs::message::MessageReader;
