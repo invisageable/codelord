@@ -998,12 +998,12 @@ impl eframe::App for Coder {
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-    self.show(ui);
+    egui::CentralPanel::default()
+      .frame(egui::Frame::NONE)
+      .show_inside(ui, |ui| self.show(ui));
   }
 
-  // TODO(egui-0.34): move logic to logic(), UI to ui(), remove update().
-  #[allow(deprecated)]
-  fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+  fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
     frame_history::record_frame_time(ctx, frame);
 
     let delta = ctx.input(|i| i.stable_dt);
