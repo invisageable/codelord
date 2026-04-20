@@ -23,6 +23,10 @@ const ZOOM_DURATION: f32 = 0.30;
 /// the cursor, smooth enough to not feel jittery. Screen-Studio-like.
 const FOLLOW_TAU: f32 = 0.08;
 /// Completion epsilon for both zoom and center.
+///
+/// Shared across unit systems intentionally: 0.001 is 0.05% of the zoom
+/// factor range and a sub-pixel snap threshold for the center. Same
+/// magnitude, different meaning — both are "close enough to stop".
 const EPSILON: f32 = 0.001;
 
 /// A single scalar smoothly eased toward a target.
@@ -72,11 +76,6 @@ impl Eased {
 
     self.current = self.start + (self.target - self.start) * eased;
   }
-
-  #[inline(always)]
-  const fn is_settled(&self) -> bool {
-    self.elapsed >= self.duration
-  }
 }
 
 /// Exponentially smoothed scalar. Approaches target asymptotically with
@@ -119,11 +118,6 @@ impl Smoothed {
 
     self.current += gap * alpha;
   }
-
-  #[inline(always)]
-  fn is_settled(&self) -> bool {
-    (self.current - self.target).abs() < EPSILON
-  }
 }
 
 /// Camera state for the Screen-Studio-style magic zoom effect.
@@ -153,24 +147,13 @@ impl Default for MagicZoomState {
 
 impl MagicZoomState {
   /// Current eased zoom factor.
-  #[inline(always)]
   pub fn zoom(&self) -> f32 {
     self.zoom.current
   }
 
   /// Current eased (x, y) camera center in screen-space pixels.
-  #[inline(always)]
   pub fn center(&self) -> (f32, f32) {
     (self.center_x.current, self.center_y.current)
-  }
-
-  /// True if any eased scalar is still in motion. Callers can use this to
-  /// skip the render-time transform path when fully idle.
-  pub fn is_animating(&self) -> bool {
-    (self.zoom.current - ZOOM_IDLE).abs() > EPSILON
-      || !self.zoom.is_settled()
-      || !self.center_x.is_settled()
-      || !self.center_y.is_settled()
   }
 
   /// Retarget the zoom factor based on engaged state.
@@ -214,7 +197,6 @@ mod tests {
     let eased = Eased::new(1.0, 0.3);
 
     assert_eq!(eased.current, 1.0);
-    assert!(eased.is_settled());
   }
 
   #[test]
@@ -224,7 +206,6 @@ mod tests {
     eased.tick(0.3);
 
     assert!((eased.current - 2.0).abs() < EPSILON);
-    assert!(eased.is_settled());
   }
 
   #[test]
@@ -242,8 +223,8 @@ mod tests {
     let mut eased = Eased::new(1.0, 0.3);
     eased.retarget(1.0);
 
-    // Still settled; elapsed untouched.
-    assert!(eased.is_settled());
+    // elapsed left at `duration` from construction — no restart triggered.
+    assert_eq!(eased.elapsed, eased.duration);
     assert_eq!(eased.current, 1.0);
   }
 
@@ -267,7 +248,6 @@ mod tests {
 
     assert!(!state.engaged);
     assert_eq!(state.zoom(), 1.0);
-    assert!(!state.is_animating());
   }
 
   #[test]
@@ -276,7 +256,6 @@ mod tests {
     state.retarget_zoom(true);
 
     assert!(state.engaged);
-    assert!(state.is_animating());
 
     // Warp past the zoom duration; must land on ZOOM_ACTIVE.
     warp(&mut state, ZOOM_DURATION + 0.01, 16);
@@ -310,17 +289,6 @@ mod tests {
 
     assert!((cx - 100.0).abs() < EPSILON);
     assert!((cy - 200.0).abs() < EPSILON);
-  }
-
-  #[test]
-  fn zoom_state_is_animating_during_motion() {
-    let mut state = MagicZoomState::default();
-    state.retarget_zoom(true);
-
-    // Midway through the zoom ease.
-    warp(&mut state, ZOOM_DURATION * 0.5, 8);
-    assert!(state.is_animating());
-    assert!(state.zoom() > 1.0 && state.zoom() < ZOOM_ACTIVE);
   }
 
   #[test]

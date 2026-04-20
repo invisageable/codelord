@@ -2326,6 +2326,9 @@ impl Coder {
     // doctrine (like Cmd+Shift+Space for voice). Emit the command only on
     // transition to avoid spamming Messages every frame; retarget the
     // camera center each frame while held so the zoom follows the cursor.
+    //
+    // Hotkey is hardcoded; user-configurable binding deferred to a later
+    // PR (tracked alongside the broader keybinds UI work).
     let (want_engage, cursor) = ctx.input(|i| {
       let held = i.modifiers.command && i.key_down(egui::Key::E);
       let cursor = i.pointer.hover_pos().map(|p| (p.x, p.y));

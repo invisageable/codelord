@@ -60,7 +60,6 @@ mod tests {
     let state = world.resource::<MagicZoomState>();
 
     assert!(state.engaged);
-    assert!(state.is_animating());
   }
 
   #[test]
