@@ -245,23 +245,12 @@ fn show_raw(ui: &mut egui::Ui, data: &str) {
 
 /// Tree node (matches server output).
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
 struct TreeNode {
   token: String,
   lexeme: String,
   span: (usize, usize),
   child_start: u16,
   child_count: u16,
-  value: Option<NodeValue>,
-}
-
-/// Node value variants.
-#[derive(serde::Deserialize)]
-#[allow(dead_code)]
-enum NodeValue {
-  Symbol(u32),
-  Literal(u32),
-  TextRange(u32, u16),
 }
 
 /// Tree output structure.

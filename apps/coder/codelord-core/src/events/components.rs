@@ -647,37 +647,37 @@ impl CloseTabsToRightRequest {
 /// Event: request to show file picker.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct ShowFilePickerRequest {
-  pub mode: crate::file_picker::FilePickerMode,
+  pub mode: crate::file_picker::resources::FilePickerMode,
 }
 
 impl ShowFilePickerRequest {
   pub fn files() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Files,
+      mode: crate::file_picker::resources::FilePickerMode::Files,
     }
   }
 
   pub fn recent() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Recent,
+      mode: crate::file_picker::resources::FilePickerMode::Recent,
     }
   }
 
   pub fn symbols() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Symbols,
+      mode: crate::file_picker::resources::FilePickerMode::Symbols,
     }
   }
 
   pub fn buffers() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Buffers,
+      mode: crate::file_picker::resources::FilePickerMode::Buffers,
     }
   }
 
   pub fn commands() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Commands,
+      mode: crate::file_picker::resources::FilePickerMode::Commands,
     }
   }
 }
@@ -689,13 +689,13 @@ pub struct HideFilePickerRequest;
 /// Event: request to toggle file picker.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct ToggleFilePickerRequest {
-  pub mode: crate::file_picker::FilePickerMode,
+  pub mode: crate::file_picker::resources::FilePickerMode,
 }
 
 impl ToggleFilePickerRequest {
   pub fn files() -> Self {
     Self {
-      mode: crate::file_picker::FilePickerMode::Files,
+      mode: crate::file_picker::resources::FilePickerMode::Files,
     }
   }
 }

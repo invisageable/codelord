@@ -52,7 +52,7 @@ use codelord_core::tabbar::components::EditorTab;
 
 use codelord_core::about::resources::AboutResource;
 use codelord_core::animation::resources::ShakeAnimation;
-use codelord_core::file_picker::{
+use codelord_core::file_picker::resources::{
   FilePickerMatcher, FilePickerMode, FilePickerResponse, FilePickerState,
 };
 use codelord_core::git::resources::{
@@ -903,8 +903,8 @@ impl Coder {
 
     // File picker systems
     schedule.add_systems((
-      codelord_core::file_picker::file_picker_populate_system,
-      codelord_core::file_picker::file_picker_tick_system,
+      codelord_core::file_picker::systems::file_picker_populate_system,
+      codelord_core::file_picker::systems::file_picker_tick_system,
     ));
 
     // SQLite preview systems (poll results, dispatch queries, close connection)

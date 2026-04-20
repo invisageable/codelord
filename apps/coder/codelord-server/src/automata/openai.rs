@@ -1,7 +1,6 @@
 use codelord_protocol::automata::dto::{
   ChatCompletionRequest, ChatCompletionResponse,
 };
-use codelord_protocol::automata::model::Message;
 
 use reqwest::Client;
 use secrecy::{ExposeSecret, SecretString};
@@ -67,36 +66,5 @@ impl OpenAIClient {
       sonic_rs::from_str::<ChatCompletionResponse>(&response_text)?;
 
     Ok(response_body)
-  }
-
-  /// Helper method for simple prompt-based completions.
-  #[allow(dead_code)]
-  pub async fn complete_with_messages(
-    &self,
-    system_prompt: &str,
-    user_message: &str,
-    model: &str,
-    temperature: f32,
-    max_tokens: u32,
-  ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let request = ChatCompletionRequest {
-      model: model.into(),
-      messages: vec![
-        Message {
-          role: "system".into(),
-          content: system_prompt.into(),
-        },
-        Message {
-          role: "user".into(),
-          content: user_message.into(),
-        },
-      ],
-      temperature,
-      max_tokens,
-    };
-
-    let response = self.complete(request).await?;
-
-    Ok(response.choices[0].message.content.clone())
   }
 }

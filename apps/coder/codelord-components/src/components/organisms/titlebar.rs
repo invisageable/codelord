@@ -248,7 +248,6 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
           state.set_payload(
             TitlebarDragPayload {
               entity: *entity,
-              icon: *icon_component,
               order: *order,
             },
             DragAxis::X,
@@ -442,8 +441,5 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
 #[derive(Clone)]
 struct TitlebarDragPayload {
   entity: Entity,
-  #[allow(dead_code)]
-  icon: Icon,
-  #[allow(dead_code)]
   order: u32,
 }
