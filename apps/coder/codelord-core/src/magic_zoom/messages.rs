@@ -1,5 +1,3 @@
-//! Magic zoom messages.
-
 use bevy_ecs::message::Message;
 
 /// Command emitted by the input layer when the hotkey transitions between

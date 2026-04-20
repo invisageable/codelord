@@ -47,6 +47,8 @@ impl Eased {
   }
 
   fn retarget(&mut self, target: f32) {
+    // Skip if already heading there: resetting `elapsed` to 0 would cause
+    // a visible pause/restart on the next tick.
     if (self.target - target).abs() < EPSILON {
       return;
     }
@@ -104,6 +106,8 @@ impl Smoothed {
   fn tick(&mut self, delta: f32) {
     let gap = self.target - self.current;
 
+    // Snap to target once within epsilon: exponential approach is
+    // asymptotic, so without this we'd accumulate sub-pixel drift forever.
     if gap.abs() < EPSILON {
       self.current = self.target;
 
