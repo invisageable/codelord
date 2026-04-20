@@ -288,7 +288,7 @@ fn render_tooltip(
       egui::Frame::NONE
         .corner_radius(egui::CornerRadius::ZERO)
         .fill(egui::Color32::BLACK)
-        .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(60)))
+        .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_gray(60)))
         .inner_margin(egui::Margin::symmetric(8, 4))
         .outer_margin(egui::Margin {
           top: 0,

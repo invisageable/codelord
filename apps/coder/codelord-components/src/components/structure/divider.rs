@@ -26,7 +26,7 @@ pub enum LabelAlign {
 /// Show a simple divider line.
 pub fn show(ui: &mut egui::Ui, axis: Axis) {
   let color = ui.visuals().widgets.noninteractive.bg_stroke.color;
-  let stroke = egui::Stroke::new(0.5, color);
+  let stroke = egui::Stroke::new(0.5_f32, color);
   let rect = ui.available_rect_before_wrap();
 
   match axis {
@@ -61,7 +61,7 @@ pub fn show_with_label(ui: &mut egui::Ui, label: &str, align: LabelAlign) {
   let visuals = ui.visuals();
   let line_color = visuals.widgets.noninteractive.bg_stroke.color;
   let text_color = visuals.weak_text_color();
-  let stroke = egui::Stroke::new(1.0, line_color);
+  let stroke = egui::Stroke::new(1.0_f32, line_color);
 
   let available_width = ui.available_width();
   let font_id = egui::FontId::proportional(12.0);

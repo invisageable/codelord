@@ -122,7 +122,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     painter.rect_stroke(
       rect,
       egui::CornerRadius::ZERO,
-      egui::Stroke::new(1.0, border_color),
+      egui::Stroke::new(1.0_f32, border_color),
       egui::StrokeKind::Inside,
     );
 

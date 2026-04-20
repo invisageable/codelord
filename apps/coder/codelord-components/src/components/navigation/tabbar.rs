@@ -341,7 +341,7 @@ fn render_tab(
             ui.painter().circle_stroke(
               left_slot_center,
               wave_radius,
-              egui::Stroke::new(1.5, wave_color),
+              egui::Stroke::new(1.5_f32, wave_color),
             );
           }
 
@@ -480,7 +480,7 @@ pub mod controls {
         egui::pos2(left_rect.right(), left_rect.top()),
         egui::pos2(left_rect.right(), left_rect.bottom()),
       ],
-      egui::Stroke::new(1.0, separator_color),
+      egui::Stroke::new(1.0_f32, separator_color),
     );
 
     // Cursor and click handling
@@ -533,7 +533,7 @@ pub mod controls {
         egui::pos2(right_rect.right(), right_rect.top()),
         egui::pos2(right_rect.right(), right_rect.bottom()),
       ],
-      egui::Stroke::new(1.0, separator_color),
+      egui::Stroke::new(1.0_f32, separator_color),
     );
 
     // Cursor and click handling
@@ -593,7 +593,7 @@ pub mod controls {
         egui::pos2(rect.left(), rect.top()),
         egui::pos2(rect.left(), rect.bottom()),
       ],
-      egui::Stroke::new(1.0, separator_color),
+      egui::Stroke::new(1.0_f32, separator_color),
     );
 
     // Cursor
@@ -641,7 +641,7 @@ pub mod controls {
         egui::pos2(rect.left(), rect.top()),
         egui::pos2(rect.left(), rect.bottom()),
       ],
-      egui::Stroke::new(1.0, separator_color),
+      egui::Stroke::new(1.0_f32, separator_color),
     );
 
     // Cursor

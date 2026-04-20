@@ -542,7 +542,7 @@ fn render_grid(
                 egui::pos2(x, y + line_height - 2.0),
                 egui::pos2(x + char_width, y + line_height - 2.0),
               ],
-              egui::Stroke::new(1.0, color),
+              egui::Stroke::new(1.0_f32, color),
             );
           }
 
@@ -553,7 +553,7 @@ fn render_grid(
                 egui::pos2(x, y + line_height / 2.0),
                 egui::pos2(x + char_width, y + line_height / 2.0),
               ],
-              egui::Stroke::new(1.0, color),
+              egui::Stroke::new(1.0_f32, color),
             );
           }
         }

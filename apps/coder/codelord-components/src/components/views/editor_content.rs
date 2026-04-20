@@ -561,7 +561,7 @@ pub fn show<M: Component>(
           line_rect,
           0.0,
           egui::Stroke::new(
-            1.0,
+            1.0_f32,
             visuals.widgets.noninteractive.bg_stroke.color,
           ),
           egui::StrokeKind::Outside,
@@ -1122,7 +1122,7 @@ fn render_empty_buffer(
   painter.rect_stroke(
     line_rect,
     0.0,
-    egui::Stroke::new(1.0, visuals.widgets.noninteractive.bg_stroke.color),
+    egui::Stroke::new(1.0_f32, visuals.widgets.noninteractive.bg_stroke.color),
     egui::StrokeKind::Outside,
   );
 
@@ -1683,7 +1683,7 @@ fn render_sticky_scroll(
       egui::pos2(sticky_rect.min.x, sticky_rect.max.y - 0.5),
       egui::pos2(sticky_rect.max.x, sticky_rect.max.y - 0.5),
     ],
-    egui::Stroke::new(0.5, separator_color),
+    egui::Stroke::new(0.5_f32, separator_color),
   );
 
   clicked_line
@@ -1979,9 +1979,9 @@ fn render_indent_guides(
       && level == active_scope.indent_level;
 
     let (color, width) = if is_active {
-      (active_color, 0.5)
+      (active_color, 0.5_f32)
     } else {
-      (inactive_color, 0.5)
+      (inactive_color, 0.5_f32)
     };
 
     // Draw vertical line
@@ -2036,7 +2036,7 @@ fn render_color_tooltip(
     tooltip_rect,
     4.0,
     bg_color,
-    egui::Stroke::new(1.0, border_color),
+    egui::Stroke::new(1.0_f32, border_color),
     egui::StrokeKind::Inside,
   );
 
@@ -2064,7 +2064,7 @@ fn render_color_tooltip(
   painter.rect_stroke(
     square_rect,
     3.0,
-    egui::Stroke::new(1.0, egui::Color32::from_gray(80)),
+    egui::Stroke::new(1.0_f32, egui::Color32::from_gray(80)),
     egui::StrokeKind::Inside,
   );
 

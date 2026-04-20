@@ -56,7 +56,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
           egui::pos2(separator_x, content_rect.top()),
           egui::pos2(separator_x, content_rect.bottom()),
         ],
-        egui::Stroke::new(1.0, separator_color),
+        egui::Stroke::new(1.0_f32, separator_color),
       );
 
       // Left column: editor (50% width).

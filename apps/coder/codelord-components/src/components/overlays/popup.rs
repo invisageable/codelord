@@ -76,7 +76,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) {
 
           egui::Frame::NONE
             .fill(bg_color)
-            .stroke(egui::Stroke::new(1.0, stroke_color))
+            .stroke(egui::Stroke::new(1.0_f32, stroke_color))
             .outer_margin(egui::Margin::same(8))
             .corner_radius(egui::CornerRadius::ZERO)
             .shadow(egui::epaint::Shadow {

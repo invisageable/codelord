@@ -88,7 +88,7 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) -> Option<ReplaceTextEvent> {
             ui.painter().rect_stroke(
               rect,
               4.0,
-              egui::Stroke::new(1.0, egui::Color32::from_gray(60)),
+              egui::Stroke::new(1.0_f32, egui::Color32::from_gray(60)),
               egui::StrokeKind::Inside,
             );
 

@@ -42,7 +42,7 @@ pub fn show_with_color(
   let center_y = rect.center().y;
   let center_x = rect.center().x;
   let num_bars = 32;
-  let bar_width = 1.0;
+  let bar_width = 1.0_f32;
   let half_width = rect.width() / 2.0;
   let bar_spacing = half_width / num_bars as f32;
   let max_height = rect.height() / 2.0 - 2.0;
