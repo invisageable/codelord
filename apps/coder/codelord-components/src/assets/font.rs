@@ -33,6 +33,30 @@ pub const ROBOTO_FLEX: &str = "roboto-flex";
 /// The `suisse-intl` font name.
 pub const SUISSE_INTL: &str = "suisse-intl";
 
+/// Sized `aeonik` FontId.
+#[inline]
+pub fn aeonik(size: f32) -> egui::FontId {
+  egui::FontId::new(size, egui::FontFamily::Name(AEONIK.into()))
+}
+
+/// Sized `cirka` FontId.
+#[inline]
+pub fn cirka(size: f32) -> egui::FontId {
+  egui::FontId::new(size, egui::FontFamily::Name(CIRKA.into()))
+}
+
+/// Sized `firacode` FontId.
+#[inline]
+pub fn firacode(size: f32) -> egui::FontId {
+  egui::FontId::new(size, egui::FontFamily::Name(FIRACODE.into()))
+}
+
+/// Sized `suisse-intl` FontId.
+#[inline]
+pub fn suisse(size: f32) -> egui::FontId {
+  egui::FontId::new(size, egui::FontFamily::Name(SUISSE_INTL.into()))
+}
+
 /// Adds new fonts here.
 fn fonts() -> &'static Vec<Font> {
   static FONTS: std::sync::OnceLock<Vec<Font>> = std::sync::OnceLock::new();

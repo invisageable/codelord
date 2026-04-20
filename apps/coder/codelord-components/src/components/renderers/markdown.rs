@@ -61,7 +61,7 @@ impl MdRenderer {
       text_pos,
       egui::Align2::LEFT_TOP,
       text,
-      egui::FontId::new(size, egui::FontFamily::Name(font::CIRKA.into())),
+      font::cirka(size),
       egui::Color32::from_rgb(204, 253, 62),
     );
   }

@@ -6,9 +6,10 @@ use crate::components::structure::divider::Axis;
 use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::ActiveAnimations;
 use codelord_core::ecs::world::World;
-use codelord_core::file_picker::{
-  CachedPreview, FilePickerMatcher, FilePickerResponse, FilePickerState,
-  RowPaddingAnim, SelectAction, load_preview,
+use codelord_core::file_picker::components::{CachedPreview, SelectAction};
+use codelord_core::file_picker::resources::{
+  FilePickerMatcher, FilePickerResponse, FilePickerState, RowPaddingAnim,
+  load_preview,
 };
 use codelord_core::icon::components::{Arrow, Icon};
 use codelord_core::language::Language;
@@ -866,7 +867,7 @@ fn build_highlighted_galley(
 /// Render directory preview.
 fn render_directory_preview(
   ui: &mut egui::Ui,
-  entries: &[codelord_core::file_picker::DirEntry],
+  entries: &[codelord_core::file_picker::components::DirEntry],
   theme: &Theme,
 ) {
   egui::ScrollArea::vertical()

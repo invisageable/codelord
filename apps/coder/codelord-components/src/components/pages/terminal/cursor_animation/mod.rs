@@ -100,7 +100,9 @@ impl AnimatedCursor {
         .collect();
 
       // Sort by alignment (lowest = trailing, highest = leading)
-      alignments.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+      alignments.sort_by(|a, b| {
+        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+      });
 
       // Create rank lookup (0 = trailing, 3 = leading)
       let mut ranks = [0usize; 4];

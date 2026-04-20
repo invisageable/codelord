@@ -39,8 +39,7 @@ fn render_section(ui: &mut egui::Ui, section: &InstructionSection) {
 
   ui.horizontal(|ui| {
     // Draw title using label to properly allocate space
-    let font_id =
-      egui::FontId::new(14.0, egui::FontFamily::Name(font::CIRKA.into()));
+    let font_id = font::cirka(14.0);
 
     let title_response = ui.label(
       egui::RichText::new(section.title)
@@ -129,8 +128,7 @@ fn render_key_badge(
       let icon_size = egui::vec2(16.0, 16.0);
 
       // Calculate text badge height to match
-      let font_id =
-        egui::FontId::new(10.0, egui::FontFamily::Name(font::FIRACODE.into()));
+      let font_id = font::firacode(10.0);
       let text_height = ui.fonts_mut(|f| {
         f.layout_no_wrap(
           "A".to_string(),
@@ -170,8 +168,7 @@ fn render_key_badge(
       const TEXT_PADDING: egui::Vec2 = egui::vec2(11.0, 6.0);
 
       // Render text key
-      let font_id =
-        egui::FontId::new(10.0, egui::FontFamily::Name(font::FIRACODE.into()));
+      let font_id = font::firacode(10.0);
 
       // Calculate badge size
       let text_galley = ui.fonts_mut(|f| {

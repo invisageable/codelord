@@ -31,6 +31,9 @@ use codelord_core::icon::components::{
 use codelord_core::keyboard;
 use codelord_core::keyboard::{Focusable, KeyboardFocus, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
+use codelord_core::magic_zoom::{
+  MagicZoomCommand, MagicZoomState, update_magic_zoom_system,
+};
 use codelord_core::navigation;
 use codelord_core::navigation::resources::{
   ActiveWorkspaceRoot, BreadcrumbData, ExplorerContextTarget,
@@ -52,7 +55,7 @@ use codelord_core::tabbar::components::EditorTab;
 
 use codelord_core::about::resources::AboutResource;
 use codelord_core::animation::resources::ShakeAnimation;
-use codelord_core::file_picker::{
+use codelord_core::file_picker::resources::{
   FilePickerMatcher, FilePickerMode, FilePickerResponse, FilePickerState,
 };
 use codelord_core::git::resources::{
@@ -445,6 +448,10 @@ impl Coder {
     world.insert_resource(XmbResource::new());
     world.init_resource::<Messages<XmbCommand>>();
 
+    // Magic zoom (Screen-Studio-style camera effect)
+    world.insert_resource(MagicZoomState::default());
+    world.init_resource::<Messages<MagicZoomCommand>>();
+
     // About resources
     world.insert_resource(AboutResource::default());
 
@@ -731,6 +738,9 @@ impl Coder {
         .chain(),
     );
 
+    // Magic zoom camera update (reads DeltaTime, drains MagicZoomCommand).
+    schedule.add_systems(update_magic_zoom_system);
+
     // Navigation systems
     schedule.add_systems((
       navigation::systems::poll_folder_dialog_system,
@@ -903,8 +913,8 @@ impl Coder {
 
     // File picker systems
     schedule.add_systems((
-      codelord_core::file_picker::file_picker_populate_system,
-      codelord_core::file_picker::file_picker_tick_system,
+      codelord_core::file_picker::systems::file_picker_populate_system,
+      codelord_core::file_picker::systems::file_picker_tick_system,
     ));
 
     // SQLite preview systems (poll results, dispatch queries, close connection)
@@ -998,12 +1008,47 @@ impl eframe::App for Coder {
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-    self.show(ui);
+    // Magic zoom: snapshot the camera once per frame; wrap the entire app
+    // body (titlebar, search, central, statusbar, music player) in a
+    // transformed layer when active. Overlays (popup, file picker, toasts)
+    // stay at 1x by design — they're rendered in `logic` via `Area`s that
+    // sit outside this CentralPanel. Skip-wrap keeps the identity case
+    // zero-cost.
+    let (mz_zoom, mz_center) = {
+      let s = self.world.resource::<MagicZoomState>();
+      (s.zoom(), s.center())
+    };
+
+    egui::CentralPanel::default()
+      .frame(egui::Frame::NONE)
+      .show_inside(ui, |ui| {
+        if (mz_zoom - 1.0).abs() < 0.001 {
+          self.show(ui);
+          return;
+        }
+
+        let layer_id = egui::LayerId::new(
+          egui::Order::Middle,
+          egui::Id::new("magic_zoom_layer"),
+        );
+
+        let cx = egui::vec2(mz_center.0, mz_center.1);
+        let transform = egui::emath::TSTransform::from_translation(cx)
+          * egui::emath::TSTransform::from_scaling(mz_zoom)
+          * egui::emath::TSTransform::from_translation(-cx);
+
+        ui.ctx().set_transform_layer(layer_id, transform);
+
+        ui.scope_builder(
+          egui::UiBuilder::new()
+            .layer_id(layer_id)
+            .max_rect(ui.available_rect_before_wrap()),
+          |ui| self.show(ui),
+        );
+      });
   }
 
-  // TODO(egui-0.34): move logic to logic(), UI to ui(), remove update().
-  #[allow(deprecated)]
-  fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+  fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
     frame_history::record_frame_time(ctx, frame);
 
     let delta = ctx.input(|i| i.stable_dt);
@@ -2273,6 +2318,34 @@ impl Coder {
         .world
         .resource_mut::<MusicPlayerState>()
         .toggle_visibility(time);
+    }
+
+    // Magic zoom: hold Cmd+E (Screen-Studio-style).
+    //
+    // Held-key, not toggle: matches the codelord "held-key modality"
+    // doctrine (like Cmd+Shift+Space for voice). Emit the command only on
+    // transition to avoid spamming Messages every frame; retarget the
+    // camera center each frame while held so the zoom follows the cursor.
+    //
+    // Hotkey is hardcoded; user-configurable binding deferred to a later
+    // PR (tracked alongside the broader keybinds UI work).
+    let (want_engage, cursor) = ctx.input(|i| {
+      let held = i.modifiers.command && i.key_down(egui::Key::E);
+      let cursor = i.pointer.hover_pos().map(|p| (p.x, p.y));
+      (held, cursor)
+    });
+
+    let was_engaged = self.world.resource::<MagicZoomState>().engaged;
+
+    if was_engaged != want_engage {
+      self.world.write_message(MagicZoomCommand {
+        engage: want_engage,
+      });
+    } else if want_engage && let Some((x, y)) = cursor {
+      self
+        .world
+        .resource_mut::<MagicZoomState>()
+        .retarget_center(x, y);
     }
   }
 

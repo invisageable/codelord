@@ -11,21 +11,27 @@ use codelord_core::token::TokenKind;
 
 use eframe::egui::Color32;
 
-/// Convert [u8; 4] to egui Color32
+/// Convert [u8; 4] theme color to egui Color32.
 #[inline]
-fn to_color32(rgba: [u8; 4]) -> Color32 {
+pub fn color32(rgba: [u8; 4]) -> Color32 {
   Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3])
 }
 
-/// Convert codelord-core Color to egui Color32
+/// Frame for panels using the theme's window_fill.
 #[inline]
-fn color_to_color32(color: &Color) -> Color32 {
-  Color32::from_rgba_unmultiplied(
+pub fn window_frame(ctx: &eframe::egui::Context) -> eframe::egui::Frame {
+  eframe::egui::Frame::NONE.fill(ctx.global_style().visuals.window_fill)
+}
+
+/// Convert interpolated (f32) Color to egui Color32.
+#[inline]
+fn animated_color32(color: &Color) -> Color32 {
+  color32([
     (color.r * 255.0) as u8,
     (color.g * 255.0) as u8,
     (color.b * 255.0) as u8,
     (color.a * 255.0) as u8,
-  )
+  ])
 }
 
 /// Convert Theme to egui Visuals
@@ -33,47 +39,47 @@ pub fn theme_to_visuals(theme: &Theme) -> eframe::egui::Visuals {
   let mut visuals = eframe::egui::Visuals::dark();
 
   // Widget colors
-  visuals.widgets.noninteractive.bg_fill = to_color32(theme.surface0);
-  visuals.widgets.noninteractive.bg_stroke.color = to_color32(theme.overlay0);
-  visuals.widgets.noninteractive.fg_stroke.color = to_color32(theme.text);
+  visuals.widgets.noninteractive.bg_fill = color32(theme.surface0);
+  visuals.widgets.noninteractive.bg_stroke.color = color32(theme.overlay0);
+  visuals.widgets.noninteractive.fg_stroke.color = color32(theme.text);
 
-  visuals.widgets.inactive.bg_fill = to_color32(theme.surface1);
-  visuals.widgets.inactive.bg_stroke.color = to_color32(theme.overlay1);
-  visuals.widgets.inactive.fg_stroke.color = to_color32(theme.subtext1);
+  visuals.widgets.inactive.bg_fill = color32(theme.surface1);
+  visuals.widgets.inactive.bg_stroke.color = color32(theme.overlay1);
+  visuals.widgets.inactive.fg_stroke.color = color32(theme.subtext1);
 
-  visuals.widgets.hovered.bg_fill = to_color32(theme.surface2);
-  visuals.widgets.hovered.bg_stroke.color = to_color32(theme.overlay2);
-  visuals.widgets.hovered.fg_stroke.color = to_color32(theme.primary);
+  visuals.widgets.hovered.bg_fill = color32(theme.surface2);
+  visuals.widgets.hovered.bg_stroke.color = color32(theme.overlay2);
+  visuals.widgets.hovered.fg_stroke.color = color32(theme.primary);
 
-  visuals.widgets.active.bg_fill = to_color32(theme.secondary);
-  visuals.widgets.active.bg_stroke.color = to_color32(theme.button_border);
-  visuals.widgets.active.fg_stroke.color = to_color32(theme.tertiary);
+  visuals.widgets.active.bg_fill = color32(theme.secondary);
+  visuals.widgets.active.bg_stroke.color = color32(theme.button_border);
+  visuals.widgets.active.fg_stroke.color = color32(theme.tertiary);
 
-  visuals.widgets.open.bg_fill = to_color32(theme.surface1);
-  visuals.widgets.open.bg_stroke.color = to_color32(theme.blue);
-  visuals.widgets.open.fg_stroke.color = to_color32(theme.text);
+  visuals.widgets.open.bg_fill = color32(theme.surface1);
+  visuals.widgets.open.bg_stroke.color = color32(theme.blue);
+  visuals.widgets.open.fg_stroke.color = color32(theme.text);
 
   // Selection colors
-  visuals.selection.bg_fill = to_color32(theme.blue).linear_multiply(0.3);
-  visuals.selection.stroke.color = to_color32(theme.blue);
+  visuals.selection.bg_fill = color32(theme.blue).linear_multiply(0.3);
+  visuals.selection.stroke.color = color32(theme.blue);
 
-  visuals.hyperlink_color = to_color32(theme.blue);
+  visuals.hyperlink_color = color32(theme.blue);
 
-  visuals.window_fill = to_color32(theme.base);
-  visuals.window_stroke.color = to_color32(theme.overlay0);
-  visuals.panel_fill = to_color32(theme.mantle);
+  visuals.window_fill = color32(theme.base);
+  visuals.window_stroke.color = color32(theme.overlay0);
+  visuals.panel_fill = color32(theme.mantle);
 
-  visuals.extreme_bg_color = to_color32(theme.crust);
-  visuals.faint_bg_color = to_color32(theme.surface0);
-  visuals.code_bg_color = to_color32(theme.mantle);
+  visuals.extreme_bg_color = color32(theme.crust);
+  visuals.faint_bg_color = color32(theme.surface0);
+  visuals.code_bg_color = color32(theme.mantle);
 
   // Separator style
   visuals.widgets.noninteractive.bg_stroke.width = 0.5;
-  visuals.widgets.noninteractive.bg_stroke.color = to_color32(theme.separator);
+  visuals.widgets.noninteractive.bg_stroke.color = color32(theme.separator);
 
   // Button hover colors (using weak_bg_fill fields)
-  visuals.widgets.hovered.weak_bg_fill = to_color32(theme.button_hover_bg);
-  visuals.widgets.active.weak_bg_fill = to_color32(theme.button_hover_fg);
+  visuals.widgets.hovered.weak_bg_fill = color32(theme.button_hover_bg);
+  visuals.widgets.active.weak_bg_fill = color32(theme.button_hover_fg);
 
   visuals
 }
@@ -116,53 +122,53 @@ fn build_visuals_from_animated(
   let mut visuals = eframe::egui::Visuals::dark();
 
   // Convert animated colors to egui colors
-  visuals.widgets.noninteractive.bg_fill = color_to_color32(&colors.surface0);
+  visuals.widgets.noninteractive.bg_fill = animated_color32(&colors.surface0);
   visuals.widgets.noninteractive.bg_stroke.color =
-    color_to_color32(&colors.overlay0);
+    animated_color32(&colors.overlay0);
   visuals.widgets.noninteractive.fg_stroke.color =
-    color_to_color32(&colors.text);
+    animated_color32(&colors.text);
 
-  visuals.widgets.inactive.bg_fill = color_to_color32(&colors.surface1);
-  visuals.widgets.inactive.bg_stroke.color = color_to_color32(&colors.overlay1);
-  visuals.widgets.inactive.fg_stroke.color = color_to_color32(&colors.subtext1);
+  visuals.widgets.inactive.bg_fill = animated_color32(&colors.surface1);
+  visuals.widgets.inactive.bg_stroke.color = animated_color32(&colors.overlay1);
+  visuals.widgets.inactive.fg_stroke.color = animated_color32(&colors.subtext1);
 
-  visuals.widgets.hovered.bg_fill = color_to_color32(&colors.surface2);
-  visuals.widgets.hovered.bg_stroke.color = color_to_color32(&colors.overlay2);
-  visuals.widgets.hovered.fg_stroke.color = color_to_color32(&colors.primary);
+  visuals.widgets.hovered.bg_fill = animated_color32(&colors.surface2);
+  visuals.widgets.hovered.bg_stroke.color = animated_color32(&colors.overlay2);
+  visuals.widgets.hovered.fg_stroke.color = animated_color32(&colors.primary);
 
-  visuals.widgets.active.bg_fill = color_to_color32(&colors.secondary);
+  visuals.widgets.active.bg_fill = animated_color32(&colors.secondary);
   visuals.widgets.active.bg_stroke.color =
-    color_to_color32(&colors.button_border);
-  visuals.widgets.active.fg_stroke.color = color_to_color32(&colors.tertiary);
+    animated_color32(&colors.button_border);
+  visuals.widgets.active.fg_stroke.color = animated_color32(&colors.tertiary);
 
-  visuals.widgets.open.bg_fill = color_to_color32(&colors.surface1);
-  visuals.widgets.open.bg_stroke.color = color_to_color32(&colors.blue);
-  visuals.widgets.open.fg_stroke.color = color_to_color32(&colors.text);
+  visuals.widgets.open.bg_fill = animated_color32(&colors.surface1);
+  visuals.widgets.open.bg_stroke.color = animated_color32(&colors.blue);
+  visuals.widgets.open.fg_stroke.color = animated_color32(&colors.text);
 
   visuals.selection.bg_fill =
-    color_to_color32(&colors.blue).linear_multiply(0.3);
-  visuals.selection.stroke.color = color_to_color32(&colors.blue);
+    animated_color32(&colors.blue).linear_multiply(0.3);
+  visuals.selection.stroke.color = animated_color32(&colors.blue);
 
-  visuals.hyperlink_color = color_to_color32(&colors.blue);
+  visuals.hyperlink_color = animated_color32(&colors.blue);
 
-  visuals.window_fill = color_to_color32(&colors.base);
-  visuals.window_stroke.color = color_to_color32(&colors.overlay0);
-  visuals.panel_fill = color_to_color32(&colors.mantle);
+  visuals.window_fill = animated_color32(&colors.base);
+  visuals.window_stroke.color = animated_color32(&colors.overlay0);
+  visuals.panel_fill = animated_color32(&colors.mantle);
 
-  visuals.extreme_bg_color = color_to_color32(&colors.crust);
-  visuals.faint_bg_color = color_to_color32(&colors.surface0);
-  visuals.code_bg_color = color_to_color32(&colors.mantle);
+  visuals.extreme_bg_color = animated_color32(&colors.crust);
+  visuals.faint_bg_color = animated_color32(&colors.surface0);
+  visuals.code_bg_color = animated_color32(&colors.mantle);
 
   // Separator style
   visuals.widgets.noninteractive.bg_stroke.width = 0.5;
   visuals.widgets.noninteractive.bg_stroke.color =
-    color_to_color32(&colors.separator);
+    animated_color32(&colors.separator);
 
   // Button hover colors (using weak_bg_fill fields)
   visuals.widgets.hovered.weak_bg_fill =
-    color_to_color32(&colors.button_hover_bg);
+    animated_color32(&colors.button_hover_bg);
   visuals.widgets.active.weak_bg_fill =
-    color_to_color32(&colors.button_hover_fg);
+    animated_color32(&colors.button_hover_fg);
 
   visuals
 }

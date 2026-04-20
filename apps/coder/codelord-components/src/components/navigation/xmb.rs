@@ -212,10 +212,7 @@ fn render(ui: &mut egui::Ui, world: &mut World, rect: egui::Rect) {
         icon_pos + egui::vec2(0.0, icon_size * 0.8),
         egui::Align2::CENTER_CENTER,
         &category.name,
-        egui::FontId::new(
-          14.0,
-          egui::FontFamily::Name(font::SUISSE_INTL.into()),
-        ),
+        font::suisse(14.0),
         name_color,
       );
     }

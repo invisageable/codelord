@@ -42,50 +42,8 @@ clean:
 bench:
   cargo bench --all
 
-eazy_run_bench:
-  cargo bench -p eazy 
-
-# Sync eazy benchmark reports to docs/ for GitHub Pages
-eazy_build_bench_reports:
-  uv run sources/tweener/eazy-tasks/build_bench_reports.py
-
-# Run benchmarks and sync to docs (for GitHub Pages deployment)
-eazy_publish_bench_reports: eazy_run_bench eazy_build_bench_reports
-  @echo "Benchmarks published to docs/"
-
-# Dry-run publish all eazy-* crates                                          
-eazy_publish_dry:                                                            
-  cargo publish -p eazy-core --dry-run
-  cargo publish -p eazy-derive --dry-run
-  cargo publish -p eazy-tweener --dry-run
-  cargo publish -p eazy-keyframe --dry-run
-  cargo publish -p eazy --dry-run
-
-# === Cross-platform testing (requires Docker) ===
-
-# Run all checks in Linux container
-test_linux:
-  docker run --rm -v {{justfile_directory()}}:/workspace -w /workspace rust:latest \
-    sh -c "apt-get update && apt-get install -y libglib2.0-dev libgtk-3-dev libatk1.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev && \
-           cargo fmt --all -- --check && \
-           cargo clippy --all --all-targets -- -D warnings && \
-           cargo test --all"
-
-# Build for Linux (quick compile check)
-build_linux:
-  docker run --rm -v {{justfile_directory()}}:/workspace -w /workspace rust:latest \
-    sh -c "apt-get update && apt-get install -y libglib2.0-dev libgtk-3-dev libatk1.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev && \
-           cargo build --all"
-
-# Cross-compile check for Windows (no tests, just build)
-build_windows:
-  docker run --rm -v {{justfile_directory()}}:/workspace -w /workspace rust:latest \
-    sh -c "rustup target add x86_64-pc-windows-gnu && \
-           apt-get update && apt-get install -y mingw-w64 && \
-           cargo build --all --target x86_64-pc-windows-gnu"
-
 # Run full CI simulation locally
-ci: fmt_check clippy test test_linux
+ci: fmt_check clippy test
   @echo "Full CI simulation passed!"
 
 # Install git hooks via lefthook
@@ -110,10 +68,6 @@ release_major:
 set_version crate version:
   cargo set-version -p {{crate}} {{version}}
 
-# Bump a specific crate: just bump_crate eazy patch
-bump_crate crate bump:
-  cargo set-version -p {{crate}} --bump {{bump}}
-
 # Bump all eazy-* crates together
 bump_eazy bump:
   cargo set-version -p eazy-core --bump {{bump}}
@@ -121,16 +75,6 @@ bump_eazy bump:
   cargo set-version -p eazy-tweener --bump {{bump}}
   cargo set-version -p eazy-keyframe --bump {{bump}}
   cargo set-version -p eazy --bump {{bump}}
-
-# Bump all swisskit-* crates together
-bump_swisskit bump:
-  cargo set-version -p swisskit-case --bump {{bump}}
-  cargo set-version -p swisskit-core --bump {{bump}}
-  cargo set-version -p swisskit-fmt --bump {{bump}}
-  cargo set-version -p swisskit-io --bump {{bump}}
-  cargo set-version -p swisskit-renderer --bump {{bump}}
-  cargo set-version -p swisskit-span --bump {{bump}}
-  cargo set-version -p swisskit --bump {{bump}}
 
 # Bump all zo-* crates together
 bump_zo bump:
@@ -155,20 +99,6 @@ publish crate:
 # Dry-run publish (verify without uploading)
 publish_dry crate:
   cargo publish -p {{crate}} --dry-run
-
-# Publish all eazy-* crates (in dependency order)
-publish_eazy:
-  cargo publish -p eazy-core
-  cargo publish -p eazy-derive
-  cargo publish -p eazy-tweener
-  cargo publish -p eazy-keyframe
-  cargo publish -p eazy
-
-# Publish all swisskit-* crates (in dependency order)
-publish_swisskit:
-  cargo publish -p swisskit-core
-  cargo publish -p swisskit-renderer
-  cargo publish -p swisskit
 
 # Create a release tag: just release 0.0.0
 release version:

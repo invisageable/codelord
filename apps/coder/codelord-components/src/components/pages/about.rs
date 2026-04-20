@@ -47,10 +47,7 @@ fn render_header(ui: &mut egui::Ui, world: &World, section_height: f32) {
         "code",
         0.0,
         egui::TextFormat {
-          font_id: egui::FontId::new(
-            140.0,
-            egui::FontFamily::Name(font::AEONIK.into()),
-          ),
+          font_id: font::aeonik(140.0),
           color: text_color,
           extra_letter_spacing: -4.0,
           ..Default::default()
@@ -61,10 +58,7 @@ fn render_header(ui: &mut egui::Ui, world: &World, section_height: f32) {
         "lord",
         0.0,
         egui::TextFormat {
-          font_id: egui::FontId::new(
-            150.0,
-            egui::FontFamily::Name(font::CIRKA.into()),
-          ),
+          font_id: font::cirka(150.0),
           color: text_color,
           extra_letter_spacing: -4.0,
           line_height: Some(178.0),
@@ -104,10 +98,7 @@ fn render_body(ui: &mut egui::Ui, world: &mut World) {
         ui.label(
           egui::RichText::new("FROM THE HACKERSPACE.")
             .color(primary_color)
-            .font(egui::FontId::new(
-              48.0,
-              egui::FontFamily::Name(font::CIRKA.into()),
-            ))
+            .font(font::cirka(48.0))
             .extra_letter_spacing(1.6),
         );
 
@@ -122,10 +113,7 @@ fn render_body(ui: &mut egui::Ui, world: &mut World) {
         ui.label(
           egui::RichText::new("WHY DO WE INNOVATE?")
             .color(primary_color)
-            .font(egui::FontId::new(
-              48.0,
-              egui::FontFamily::Name(font::CIRKA.into()),
-            ))
+            .font(font::cirka(48.0))
             .extra_letter_spacing(1.6),
         );
 
@@ -281,10 +269,7 @@ fn render_footer(ui: &mut egui::Ui, world: &World) {
         "reach",
         0.0,
         egui::TextFormat {
-          font_id: egui::FontId::new(
-            140.0,
-            egui::FontFamily::Name(font::AEONIK.into()),
-          ),
+          font_id: font::aeonik(140.0),
           color: secondary_color,
           extra_letter_spacing: -4.0,
           ..Default::default()
@@ -295,10 +280,7 @@ fn render_footer(ui: &mut egui::Ui, world: &World) {
         "out",
         0.0,
         egui::TextFormat {
-          font_id: egui::FontId::new(
-            150.0,
-            egui::FontFamily::Name(font::CIRKA.into()),
-          ),
+          font_id: font::cirka(150.0),
           color: secondary_color,
           extra_letter_spacing: -4.0,
           ..Default::default()

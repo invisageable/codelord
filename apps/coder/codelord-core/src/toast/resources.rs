@@ -3,6 +3,7 @@
 use super::components::{
   Toast, ToastAction, ToastAnimation, ToastId, ToastStatus,
 };
+use crate::time::current_time_ms;
 
 use bevy_ecs::message::Message;
 use bevy_ecs::resource::Resource;
@@ -201,11 +202,4 @@ impl ToasterResource {
   pub fn is_empty(&self) -> bool {
     self.toasts.is_empty()
   }
-}
-
-fn current_time_ms() -> u64 {
-  std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .unwrap()
-    .as_millis() as u64
 }

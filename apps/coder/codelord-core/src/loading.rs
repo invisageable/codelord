@@ -3,6 +3,8 @@
 //! Tracks loading tasks across the application for unified progress display.
 //! Used by the titlebar to show a global progress indicator.
 
+use crate::time::current_time_ms;
+
 use bevy_ecs::prelude::Resource;
 
 /// Categories of loading tasks.
@@ -82,11 +84,4 @@ impl GlobalLoading {
   pub fn clear_completed(&mut self) {
     self.completed_time = 0;
   }
-}
-
-fn current_time_ms() -> u64 {
-  std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .unwrap()
-    .as_millis() as u64
 }
