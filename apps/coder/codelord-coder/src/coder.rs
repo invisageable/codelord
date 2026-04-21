@@ -1002,41 +1002,81 @@ impl Coder {
   }
 }
 
+impl Coder {
+  /// Layer id of the magic-zoom sublayer wrapping `self.show(ui)`.
+  fn magic_zoom_layer_id() -> egui::LayerId {
+    egui::LayerId::new(egui::Order::Middle, egui::Id::new("magic_zoom_layer"))
+  }
+
+  /// Current camera transform, or `None` if the zoom is effectively 1x.
+  /// Returning `None` lets callers skip-wrap on the identity case.
+  fn magic_zoom_transform(&self) -> Option<egui::emath::TSTransform> {
+    let state = self.world.resource::<MagicZoomState>();
+    let zoom = state.zoom();
+
+    if (zoom - 1.0).abs() < 0.001 {
+      return None;
+    }
+
+    let (cx, cy) = state.center();
+    let c = egui::vec2(cx, cy);
+
+    Some(
+      egui::emath::TSTransform::from_translation(c)
+        * egui::emath::TSTransform::from_scaling(zoom)
+        * egui::emath::TSTransform::from_translation(-c),
+    )
+  }
+
+  /// Propagate the magic-zoom transform to every visible layer except our
+  /// own (already transformed in `fn ui`). Overlays — file picker, popups,
+  /// dialogs, toasts — render via `egui::Area` outside the `scope_builder`
+  /// wrap, so without this they'd stay at 1x while the main body zooms.
+  ///
+  /// On idle frames we push `TSTransform::IDENTITY` to clear any stale
+  /// entries from a just-finished zoom (egui stores transforms across
+  /// frames).
+  fn propagate_magic_zoom(&self, ctx: &egui::Context) {
+    let magic_id = Self::magic_zoom_layer_id();
+    let transform = self
+      .magic_zoom_transform()
+      .unwrap_or(egui::emath::TSTransform::IDENTITY);
+
+    let layer_ids: Vec<egui::LayerId> = ctx.memory(|m| m.layer_ids().collect());
+
+    for id in layer_ids {
+      if id == magic_id {
+        continue;
+      }
+
+      ctx.set_transform_layer(id, transform);
+    }
+  }
+}
+
 impl eframe::App for Coder {
   fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
     egui::Color32::TRANSPARENT.to_normalized_gamma_f32()
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-    // Magic zoom: snapshot the camera once per frame; wrap the entire app
-    // body (titlebar, search, central, statusbar, music player) in a
-    // transformed layer when active. Overlays (popup, file picker, toasts)
-    // stay at 1x by design — they're rendered in `logic` via `Area`s that
-    // sit outside this CentralPanel. Skip-wrap keeps the identity case
+    // Magic zoom: wrap the entire app body (titlebar, search, central,
+    // statusbar, music player) in a transformed layer when active.
+    // Overlays are handled separately in `fn logic` via
+    // `propagate_magic_zoom` — they render as top-level `Area`s and need
+    // their own transform pass. Skip-wrap keeps the identity case
     // zero-cost.
-    let (mz_zoom, mz_center) = {
-      let s = self.world.resource::<MagicZoomState>();
-      (s.zoom(), s.center())
-    };
+    let transform = self.magic_zoom_transform();
 
     egui::CentralPanel::default()
       .frame(egui::Frame::NONE)
       .show_inside(ui, |ui| {
-        if (mz_zoom - 1.0).abs() < 0.001 {
+        let Some(transform) = transform else {
           self.show(ui);
           return;
-        }
+        };
 
-        let layer_id = egui::LayerId::new(
-          egui::Order::Middle,
-          egui::Id::new("magic_zoom_layer"),
-        );
-
-        let cx = egui::vec2(mz_center.0, mz_center.1);
-        let transform = egui::emath::TSTransform::from_translation(cx)
-          * egui::emath::TSTransform::from_scaling(mz_zoom)
-          * egui::emath::TSTransform::from_translation(-cx);
-
+        let layer_id = Self::magic_zoom_layer_id();
         ui.ctx().set_transform_layer(layer_id, transform);
 
         ui.scope_builder(
@@ -2233,6 +2273,10 @@ impl Coder {
           self.handle_toast_action(&event.action_id);
         }
       });
+
+    // Magic zoom: apply transform to every overlay layer (popups, file
+    // picker, dialogs, toasts) now that they've all rendered.
+    self.propagate_magic_zoom(&ctx);
 
     // Check if voice model download toast should be shown
     self.check_voice_model_toast();
