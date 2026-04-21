@@ -80,3 +80,12 @@ impl SvgPreviewState {
     self.generation += 1;
   }
 }
+
+/// Returns true if `path` has an SVG extension.
+pub fn accepts(path: &std::path::Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| ext.eq_ignore_ascii_case("svg"))
+    .unwrap_or(false)
+}

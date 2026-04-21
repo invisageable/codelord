@@ -541,3 +541,14 @@ pub fn close_sqlite_connection_system(world: &mut World) {
     }
   }
 }
+
+/// Returns true if `path` has a SQLite database extension.
+pub fn accepts(path: &std::path::Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| {
+      matches!(ext.to_lowercase().as_str(), "db" | "sqlite" | "sqlite3")
+    })
+    .unwrap_or(false)
+}

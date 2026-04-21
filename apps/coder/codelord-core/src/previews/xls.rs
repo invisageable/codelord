@@ -164,3 +164,18 @@ pub struct SelectSheetRequest(pub usize);
 /// Request to change the current page.
 #[derive(Component)]
 pub struct ChangeXlsPageRequest(pub usize);
+
+/// Returns true if `path` has a spreadsheet extension handled by the XLS
+/// preview (xls/xlsx/xlsm/xlsb/ods).
+pub fn accepts(path: &std::path::Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| {
+      matches!(
+        ext.to_lowercase().as_str(),
+        "xls" | "xlsx" | "xlsm" | "xlsb" | "ods"
+      )
+    })
+    .unwrap_or(false)
+}

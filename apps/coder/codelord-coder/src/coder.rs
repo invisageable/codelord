@@ -2418,7 +2418,7 @@ impl Coder {
       && let Some(tab_state) = session.tabs.get(active_idx)
       && let Some(path) = &tab_state.path
     {
-      if Self::is_sqlite_file(path) {
+      if previews::sqlite::accepts(path) {
         if let Some(mut sqlite_preview) =
           world.get_resource_mut::<SqlitePreviewState>()
         {
@@ -2426,21 +2426,21 @@ impl Coder {
           sqlite_preview.current_file = Some(path.clone());
           sqlite_preview.needs_reload = true;
         }
-      } else if Self::is_pdf_file(path) {
+      } else if previews::pdf::accepts(path) {
         world.spawn(OpenPdfPreviewRequest(path.clone()));
-      } else if Self::is_xls_file(path) {
+      } else if previews::xls::accepts(path) {
         if let Some(mut xls_preview) =
           world.get_resource_mut::<XlsPreviewState>()
         {
           xls_preview.open(path.clone());
         }
-      } else if Self::is_font_file(path) {
+      } else if previews::font::accepts(path) {
         if let Some(mut font_preview) =
           world.get_resource_mut::<FontPreviewState>()
         {
           font_preview.open(path);
         }
-      } else if Self::is_svg_file(path)
+      } else if previews::svg::accepts(path)
         && let Some(mut svg_preview) =
           world.get_resource_mut::<SvgPreviewState>()
       {
@@ -2455,63 +2455,6 @@ impl Coder {
     );
 
     true
-  }
-
-  /// Checks if a file is a SQLite database by extension.
-  fn is_sqlite_file(path: &std::path::Path) -> bool {
-    path
-      .extension()
-      .and_then(|ext| ext.to_str())
-      .map(|ext| {
-        matches!(ext.to_lowercase().as_str(), "db" | "sqlite" | "sqlite3")
-      })
-      .unwrap_or(false)
-  }
-
-  /// Checks if a file is a PDF by extension.
-  fn is_pdf_file(path: &std::path::Path) -> bool {
-    path
-      .extension()
-      .and_then(|ext| ext.to_str())
-      .map(|ext| ext.eq_ignore_ascii_case("pdf"))
-      .unwrap_or(false)
-  }
-
-  /// Checks if a file is an Excel spreadsheet by extension.
-  fn is_xls_file(path: &std::path::Path) -> bool {
-    path
-      .extension()
-      .and_then(|ext| ext.to_str())
-      .map(|ext| {
-        matches!(
-          ext.to_lowercase().as_str(),
-          "xls" | "xlsx" | "xlsm" | "xlsb" | "ods"
-        )
-      })
-      .unwrap_or(false)
-  }
-
-  /// Checks if a file is a font file by extension.
-  fn is_font_file(path: &std::path::Path) -> bool {
-    path
-      .extension()
-      .and_then(|ext| ext.to_str())
-      .map(|ext| {
-        matches!(
-          ext.to_lowercase().as_str(),
-          "ttf" | "otf" | "woff" | "woff2"
-        )
-      })
-      .unwrap_or(false)
-  }
-
-  /// Checks if a file is an SVG by extension.
-  fn is_svg_file(path: &std::path::Path) -> bool {
-    path
-      .extension()
-      .and_then(|ext| ext.to_str())
-      .map(|ext| ext.eq_ignore_ascii_case("svg"))
-      .unwrap_or(false)
   }
 
   /// Reset the app to a fresh state (clear all tabs, explorer, etc.)
