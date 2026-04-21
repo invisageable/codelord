@@ -33,6 +33,7 @@ pub mod terminal;
 pub mod text_editor;
 pub mod theme;
 pub mod time;
+pub mod titlebar;
 pub mod toast;
 pub mod token;
 pub mod ui;

@@ -2,8 +2,16 @@
 //!
 //! Renders SVG files using resvg/usvg and displays as egui texture.
 
+use codelord_core::ecs::world::World;
 use eframe::egui::{self, Color32, RichText, TextureHandle, Ui};
 use resvg::tiny_skia::Pixmap;
+
+/// Install the non-Send SVG texture cache resource. Lives here (not in
+/// `codelord-core`) because the cache holds an egui `TextureHandle`
+/// which isn't `Send`.
+pub fn install_non_send(world: &mut World) {
+  world.insert_non_send_resource(SvgTextureCacheResource::default());
+}
 
 /// Cached rendered SVG texture.
 pub struct SvgTextureCache {

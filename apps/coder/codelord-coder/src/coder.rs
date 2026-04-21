@@ -3,12 +3,11 @@ use codelord_components::components::effects;
 use codelord_components::components::indicators::frame_history;
 use codelord_components::components::layouts::base;
 use codelord_components::components::organisms::{
-  statusbar as statusbar_view, titlebar,
+  statusbar as statusbar_view, titlebar as titlebar_view,
 };
 use codelord_components::components::overlays;
 use codelord_components::components::panels::music_player;
 use codelord_components::components::panels::search as search_panel;
-use codelord_components::components::renderers::svg::SvgTextureCacheResource;
 use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::animation::resources::{
@@ -16,7 +15,6 @@ use codelord_core::animation::resources::{
 };
 use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
 use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
-use codelord_core::drag_and_drop::DragOrder;
 use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
@@ -28,9 +26,6 @@ use codelord_core::events::{
 };
 use codelord_core::filescope::resources::{
   FilescopeMode, FilescopeResponse, FilescopeState,
-};
-use codelord_core::icon::components::{
-  Icon, StatusbarIconBundle, TitlebarIconBundle,
 };
 use codelord_core::keyboard::{Focusable, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
@@ -48,19 +43,13 @@ use codelord_core::playground::{
   PlaygroundHoveredSpan, PlaygroundMetrics, PlaygroundOutput,
   PlaygroundWebviewState,
 };
-use codelord_core::popup::components::{
-  MenuItem, Popup, PopupContent, PopupPosition,
-};
-use codelord_core::popup::resources::PopupResource;
 use codelord_core::previews::sqlite::SqliteQuery;
 use codelord_core::previews::{
   DEFAULT_PREVIEW_URL, FontPreviewState, HtmlPreviewState, PdfConnection,
   PdfPreviewState, SqliteConnection, SqlitePreviewState, SvgPreviewState,
   XlsPreviewState,
 };
-use codelord_core::runtime::RuntimeHandle;
 use codelord_core::search::SearchState;
-use codelord_core::statusbar::resources::StatusbarResource;
 use codelord_core::tabbar::components::EditorTab;
 use codelord_core::tabbar::components::{PlaygroundTab, SonarAnimation, Tab};
 use codelord_core::tabbar::{
@@ -75,7 +64,6 @@ use codelord_core::theme::resources::{
 use codelord_core::toast::components::ToastAction;
 use codelord_core::toast::resources::{DismissToastCommand, ToastCommand};
 use codelord_core::ui::component::{Active, Metric};
-use codelord_core::ui::component::{DecorationBundle, DecorationType};
 use codelord_core::voice::components::VoiceState;
 use codelord_core::voice::resources::{
   ModelStatus, VisualizerStatus, VoiceActionEvent, VoiceModelState,
@@ -83,9 +71,9 @@ use codelord_core::voice::resources::{
 };
 use codelord_core::{
   about, animation, audio, codeshow, color, drag_and_drop, ecs, filescope, git,
-  instruction, keyboard, language, loading, magic_zoom, navigation, page,
-  panel, playground, popup, previews, search, settings, statusbar, symbol,
-  tabbar, terminal, text_editor, theme, toast, token, voice, xmb,
+  instruction, keyboard, loading, magic_zoom, navigation, page, panel,
+  playground, popup, previews, search, settings, statusbar, symbol, tabbar,
+  terminal, text_editor, theme, titlebar, toast, voice, xmb,
 };
 use codelord_protocol::compilation::CompilationEvent;
 use codelord_protocol::event::ServerEvent;
@@ -177,137 +165,19 @@ impl Coder {
     symbol::install(&mut world);
     text_editor::install(&mut world);
 
-    // Symbol extractors (registered from codelord-language)
-    world.insert_resource(
-      symbol::resources::SymbolExtractors::new()
-        .register(
-          language::Language::C,
-          codelord_language::language::c::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Elixir,
-          codelord_language::language::elixir::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::JavaScript,
-          codelord_language::language::javascript::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Json,
-          codelord_language::language::json::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Python,
-          codelord_language::language::python::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Rust,
-          codelord_language::language::rust::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Zig,
-          codelord_language::language::zig::symbols::extract_symbols,
-        )
-        .register(
-          language::Language::Zo,
-          codelord_language::language::zo::symbols::extract_symbols,
-        ),
-    );
-
-    // Token extractors for syntax highlighting (registered from
-    // codelord-language)
-    world.insert_resource(
-      token::TokenExtractors::new()
-        .register(
-          language::Language::Bash,
-          codelord_language::language::bash::highlights::parse,
-        )
-        .register(
-          language::Language::C,
-          codelord_language::language::c::highlights::parse,
-        )
-        .register(
-          language::Language::Conf,
-          codelord_language::language::conf::highlights::parse,
-        )
-        .register(
-          language::Language::Css,
-          codelord_language::language::css::highlights::parse,
-        )
-        .register(
-          language::Language::Diff,
-          codelord_language::language::diff::highlights::parse,
-        )
-        .register(
-          language::Language::Elixir,
-          codelord_language::language::elixir::highlights::parse,
-        )
-        .register(
-          language::Language::Env,
-          codelord_language::language::env::highlights::parse,
-        )
-        .register(
-          language::Language::Gleam,
-          codelord_language::language::gleam::highlights::parse,
-        )
-        .register(
-          language::Language::Go,
-          codelord_language::language::go::highlights::parse,
-        )
-        .register(
-          language::Language::Html,
-          codelord_language::language::html::highlights::parse,
-        )
-        .register(
-          language::Language::JavaScript,
-          codelord_language::language::javascript::highlights::parse,
-        )
-        .register(
-          language::Language::Json,
-          codelord_language::language::json::highlights::parse,
-        )
-        .register(
-          language::Language::Markdown,
-          codelord_language::language::markdown::highlights::parse,
-        )
-        // .register(
-        //   language::Language::Ocaml,
-        //   codelord_language::language::ocaml::highlights::parse,
-        // )
-        .register(
-          language::Language::Python,
-          codelord_language::language::python::highlights::parse,
-        )
-        .register(
-          language::Language::Rust,
-          codelord_language::language::rust::highlights::parse,
-        )
-        .register(
-          language::Language::TypeScript,
-          codelord_language::language::typescript::highlights::parse,
-        )
-        .register(
-          language::Language::Yaml,
-          codelord_language::language::yaml::highlights::parse,
-        )
-        .register(
-          language::Language::Zig,
-          codelord_language::language::zig::highlights::parse,
-        )
-        .register(
-          language::Language::Zo,
-          codelord_language::language::zo::highlights::parse,
-        ),
-    );
-
+    codelord_language::install_symbol_extractors(&mut world);
+    codelord_language::install_token_extractors(&mut world);
     color::install(&mut world, codelord_language::color::extract);
     statusbar::install(&mut world);
     panel::install(&mut world);
     audio::install(&mut world);
     previews::install(&mut world);
 
-    // SVG texture cache is non-Send so it lives outside the feature's install.
-    world.insert_non_send_resource(SvgTextureCacheResource::default());
+    // SVG texture cache is non-Send (holds an egui TextureHandle), so it
+    // lives in codelord-components — see `svg::install_non_send`.
+    codelord_components::components::renderers::svg::install_non_send(
+      &mut world,
+    );
 
     search::install(&mut world);
     popup::install(&mut world);
@@ -336,15 +206,14 @@ impl Coder {
       .build()
       .expect("Failed to create Tokio runtime");
 
-    world.insert_resource(RuntimeHandle::new(runtime.handle().clone()));
+    codelord_core::runtime::install(&mut world, runtime.handle().clone());
 
     let sdk = Arc::new(Sdk::new(runtime.handle().clone()));
 
     let (voice_action_tx, voice_action_rx) = flume::unbounded::<VoiceAction>();
 
-    // Always insert VoiceVisualizerState (even if VoiceManager fails)
-    let visualizer_state = codelord_voice::VoiceVisualizerState::new();
-    world.insert_resource(visualizer_state.clone());
+    // Install VoiceVisualizerState + hand a clone to VoiceManager below.
+    let visualizer_state = codelord_voice::install_visualizer(&mut world);
 
     let voice_manager = VoiceManager::new(
       voice_action_tx,
@@ -383,99 +252,13 @@ impl Coder {
     // Spawn Initial Entities
     // ========================================================================
 
-    // Spawn window decoration buttons
-    world.spawn(DecorationBundle::new(DecorationType::Close));
-    world.spawn(DecorationBundle::new(DecorationType::MinimizeMaximize));
-    world.spawn(DecorationBundle::new(DecorationType::Fullscreen));
+    titlebar::spawn_default(&mut world);
+    statusbar::spawn_default_icons(&mut world);
 
-    // Spawn titlebar icon buttons with drag order
-    world.spawn((TitlebarIconBundle::new(Icon::Home), DragOrder(0)));
-    world.spawn((TitlebarIconBundle::new(Icon::Code), DragOrder(1)));
-    world.spawn((TitlebarIconBundle::new(Icon::Ufo), DragOrder(2)));
-    world.spawn((TitlebarIconBundle::new(Icon::Alien), DragOrder(3)));
-
-    // Spawn statusbar icon buttons
-    let explorer_btn =
-      world.spawn(StatusbarIconBundle::new(Icon::Explorer)).id();
-
-    let voice_btn = world.spawn(StatusbarIconBundle::new(Icon::Voice)).id();
-
-    // Register statusbar buttons in the resource
-    if let Some(mut statusbar) = world.get_resource_mut::<StatusbarResource>() {
-      statusbar.add_left(explorer_btn);
-      statusbar.add_right(voice_btn);
-    }
-
-    // Spawn settings popup
-    let settings_menu = PopupContent::Menu(vec![
-      MenuItem::new("about", "About Codelord"),
-      MenuItem::new("settings", "Settings").with_shortcut("Cmd+,"),
-      MenuItem::new("check_updates", "Check for Updates"),
-    ]);
-
-    let settings_popup = world.spawn(Popup::new(settings_menu)).id();
-
-    // Store settings popup entity in resource
-    if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
-      popup_res.settings_popup = Some(settings_popup);
-    }
-
-    // Spawn explorer context menu popup
-    let explorer_context_menu = PopupContent::Menu(vec![
-      MenuItem::new("new_file", "New File"),
-      MenuItem::new("new_folder", "New Folder").with_separator(),
-      MenuItem::new("add_folder_to_workspace", "Add Folder to Workspace"),
-      MenuItem::new("remove_from_workspace", "Remove from Workspace")
-        .with_separator(),
-      MenuItem::new("cut", "Cut"),
-      MenuItem::new("copy", "Copy"),
-      MenuItem::new("paste", "Paste").with_separator(),
-      MenuItem::new("copy_path", "Copy Path"),
-      MenuItem::new("copy_relative_path", "Copy Relative Path"),
-      MenuItem::new("reveal_in_finder", "Reveal in Finder").with_separator(),
-      MenuItem::new("rename", "Rename"),
-      MenuItem::new("delete", "Delete"),
-    ]);
-
-    let explorer_context_popup = world
-      .spawn(
-        Popup::new(explorer_context_menu).with_position(PopupPosition::Cursor),
-      )
-      .id();
-
-    if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
-      popup_res.explorer_context_popup = Some(explorer_context_popup)
-    }
-
-    // Spawn tab context menu popup
-    let tab_context_menu = PopupContent::Menu(vec![
-      MenuItem::new("close_tab", "Close"),
-      MenuItem::new("close_others", "Close Others"),
-      MenuItem::new("close_to_right", "Close to the Right").with_separator(),
-      MenuItem::new("close_all", "Close All"),
-    ]);
-
-    let tab_context_popup = world
-      .spawn(Popup::new(tab_context_menu).with_position(PopupPosition::Cursor))
-      .id();
-
-    if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
-      popup_res.tab_context_popup = Some(tab_context_popup)
-    }
-
-    // Spawn SQLite export popup
-    let sqlite_export_menu = PopupContent::Menu(vec![
-      MenuItem::new("export_csv", "Export as CSV"),
-      MenuItem::new("export_json", "Export as JSON"),
-    ]);
-
-    let sqlite_export_popup = world
-      .spawn(Popup::new(sqlite_export_menu).with_position(PopupPosition::Below))
-      .id();
-
-    if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
-      popup_res.sqlite_export_popup = Some(sqlite_export_popup)
-    }
+    settings::spawn_popup(&mut world);
+    navigation::spawn_context_popup(&mut world);
+    tabbar::spawn_context_popup(&mut world);
+    previews::sqlite::spawn_export_popup(&mut world);
 
     // ========================================================================
     // Restore Session or Create Default Tab
@@ -1720,7 +1503,7 @@ impl Coder {
       )
       .show_separator_line(false)
       .show_inside(ui, |ui| {
-        titlebar::show(ui, &mut self.world);
+        titlebar_view::show(ui, &mut self.world);
         self.render_header_separator(ui);
       });
 

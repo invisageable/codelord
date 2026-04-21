@@ -18,6 +18,30 @@ pub fn install(world: &mut crate::ecs::world::World) {
   world.insert_resource(UnsavedChangesDialog::default());
 }
 
+/// Spawn the tab right-click context menu popup and register its
+/// entity in [`crate::popup::resources::PopupResource`].
+pub fn spawn_context_popup(world: &mut crate::ecs::world::World) {
+  use crate::popup::components::{
+    MenuItem, Popup, PopupContent, PopupPosition,
+  };
+  use crate::popup::resources::PopupResource;
+
+  let menu = PopupContent::Menu(vec![
+    MenuItem::new("close_tab", "Close"),
+    MenuItem::new("close_others", "Close Others"),
+    MenuItem::new("close_to_right", "Close to the Right").with_separator(),
+    MenuItem::new("close_all", "Close All"),
+  ]);
+
+  let entity = world
+    .spawn(Popup::new(menu).with_position(PopupPosition::Cursor))
+    .id();
+
+  if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
+    popup_res.tab_context_popup = Some(entity);
+  }
+}
+
 /// Register tabbar systems.
 pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
   schedule.add_systems((

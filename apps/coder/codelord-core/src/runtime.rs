@@ -25,3 +25,12 @@ impl Deref for RuntimeHandle {
     &self.0
   }
 }
+
+/// Install a [`RuntimeHandle`] wrapping the given tokio `Handle` into
+/// the world.
+pub fn install(
+  world: &mut crate::ecs::world::World,
+  handle: tokio::runtime::Handle,
+) {
+  world.insert_resource(RuntimeHandle::new(handle));
+}

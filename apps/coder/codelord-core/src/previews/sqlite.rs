@@ -552,3 +552,25 @@ pub fn accepts(path: &std::path::Path) -> bool {
     })
     .unwrap_or(false)
 }
+
+/// Spawn the SQLite export dropdown popup (CSV / JSON) and register its
+/// entity in [`crate::popup::resources::PopupResource`].
+pub fn spawn_export_popup(world: &mut crate::ecs::world::World) {
+  use crate::popup::components::{
+    MenuItem, Popup, PopupContent, PopupPosition,
+  };
+  use crate::popup::resources::PopupResource;
+
+  let menu = PopupContent::Menu(vec![
+    MenuItem::new("export_csv", "Export as CSV"),
+    MenuItem::new("export_json", "Export as JSON"),
+  ]);
+
+  let entity = world
+    .spawn(Popup::new(menu).with_position(PopupPosition::Below))
+    .id();
+
+  if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
+    popup_res.sqlite_export_popup = Some(entity);
+  }
+}

@@ -22,6 +22,39 @@ pub fn install(world: &mut crate::ecs::world::World) {
   world.insert_resource(FileClipboard::default());
 }
 
+/// Spawn the explorer right-click context menu popup and register its
+/// entity in [`PopupResource`].
+pub fn spawn_context_popup(world: &mut crate::ecs::world::World) {
+  use crate::popup::components::{
+    MenuItem, Popup, PopupContent, PopupPosition,
+  };
+  use crate::popup::resources::PopupResource;
+
+  let menu = PopupContent::Menu(vec![
+    MenuItem::new("new_file", "New File"),
+    MenuItem::new("new_folder", "New Folder").with_separator(),
+    MenuItem::new("add_folder_to_workspace", "Add Folder to Workspace"),
+    MenuItem::new("remove_from_workspace", "Remove from Workspace")
+      .with_separator(),
+    MenuItem::new("cut", "Cut"),
+    MenuItem::new("copy", "Copy"),
+    MenuItem::new("paste", "Paste").with_separator(),
+    MenuItem::new("copy_path", "Copy Path"),
+    MenuItem::new("copy_relative_path", "Copy Relative Path"),
+    MenuItem::new("reveal_in_finder", "Reveal in Finder").with_separator(),
+    MenuItem::new("rename", "Rename"),
+    MenuItem::new("delete", "Delete"),
+  ]);
+
+  let entity = world
+    .spawn(Popup::new(menu).with_position(PopupPosition::Cursor))
+    .id();
+
+  if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
+    popup_res.explorer_context_popup = Some(entity);
+  }
+}
+
 /// Register navigation / explorer systems.
 pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
   schedule.add_systems((
