@@ -45,8 +45,6 @@ pub fn install(world: &mut crate::ecs::world::World) {
 }
 
 /// Register preview polling systems (SQLite + PDF async round-trips).
-/// Native-only — WebView/rfd don't run on wasm32.
-#[cfg(not(target_arch = "wasm32"))]
 pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
   schedule.add_systems((
     poll_sqlite_results_system,
@@ -59,6 +57,3 @@ pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
     close_pdf_connection_system,
   ));
 }
-
-#[cfg(target_arch = "wasm32")]
-pub fn register_systems(_schedule: &mut crate::ecs::schedule::Schedule) {}

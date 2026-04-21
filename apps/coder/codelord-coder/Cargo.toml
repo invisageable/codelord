@@ -22,11 +22,9 @@ codelord-voice = { workspace = true }
 bevy_ecs = { workspace = true }
 eframe = { workspace = true }
 flume = { workspace = true }
-log = { workspace = true }
-serde = { workspace = true }
-tokio = { workspace = true }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 gilrs = { workspace = true }
+log = { workspace = true }
 raw-window-handle = { workspace = true }
+serde = { workspace = true }
 swisskit = { workspace = true }
+tokio = { workspace = true }

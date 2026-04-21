@@ -7,49 +7,7 @@ use bevy_ecs::prelude::{Component, Resource};
 
 use std::path::PathBuf;
 
-#[cfg(not(target_arch = "wasm32"))]
 use swisskit::renderer::xls::XlsData;
-
-#[cfg(target_arch = "wasm32")]
-pub use XlsData;
-
-/// Placeholder for WASM builds.
-#[cfg(target_arch = "wasm32")]
-#[derive(Debug, Clone, Default)]
-pub struct XlsData {
-  pub sheet_names: Vec<String>,
-  pub selected_sheet: usize,
-  pub headers: Vec<String>,
-  pub rows: Vec<Vec<String>>,
-  pub total_rows: usize,
-  pub parse_error: Option<String>,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl XlsData {
-  pub fn error(message: String) -> Self {
-    Self {
-      sheet_names: Vec::new(),
-      selected_sheet: 0,
-      headers: Vec::new(),
-      rows: Vec::new(),
-      total_rows: 0,
-      parse_error: Some(message),
-    }
-  }
-
-  pub fn has_error(&self) -> bool {
-    self.parse_error.is_some()
-  }
-
-  pub fn is_truncated(&self) -> bool {
-    self.total_rows > self.rows.len()
-  }
-
-  pub fn has_multiple_sheets(&self) -> bool {
-    self.sheet_names.len() > 1
-  }
-}
 
 /// Resource for tracking XLS preview state.
 ///
@@ -85,7 +43,6 @@ impl XlsPreviewState {
   pub const DEFAULT_ROWS_PER_PAGE: usize = 100;
 
   /// Opens XLS preview for a file.
-  #[cfg(not(target_arch = "wasm32"))]
   pub fn open(&mut self, file: PathBuf) {
     let data = swisskit::renderer::xls::parse_xls_file(&file);
 
@@ -102,16 +59,7 @@ impl XlsPreviewState {
     self.current_page = 0;
   }
 
-  /// Opens XLS preview for a file (WASM stub).
-  #[cfg(target_arch = "wasm32")]
-  pub fn open(&mut self, _file: PathBuf) {
-    self.cached_data = Some(XlsData::error(
-      "XLS preview not supported on web".to_string(),
-    ));
-  }
-
   /// Switches to a different sheet.
-  #[cfg(not(target_arch = "wasm32"))]
   pub fn select_sheet(&mut self, sheet_index: usize) {
     let Some(file) = self.current_file.clone() else {
       return;
@@ -121,10 +69,6 @@ impl XlsPreviewState {
     self.cached_data = Some(data);
     self.current_page = 0;
   }
-
-  /// Switches to a different sheet (WASM stub).
-  #[cfg(target_arch = "wasm32")]
-  pub fn select_sheet(&mut self, _sheet_index: usize) {}
 
   /// Closes the preview.
   pub fn close(&mut self) {

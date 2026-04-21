@@ -23,6 +23,7 @@ fastrand = { workspace = true }
 flume = { workspace = true }
 log = { workspace = true }
 nucleo = { workspace = true }
+raw-window-handle = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 rfd = { workspace = true }
@@ -30,10 +31,7 @@ ropey = { workspace = true }
 rust-i18n = { workspace = true }
 rustc-hash = { workspace = true }
 sonic-rs = { workspace = true }
+swisskit = { workspace = true }
 sysinfo = { workspace = true }
 tokio = { workspace = true }
 walkdir = { workspace = true }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-raw-window-handle = { workspace = true }
-swisskit = { workspace = true }

@@ -8,6 +8,7 @@ use codelord_components::components::organisms::{
 use codelord_components::components::overlays;
 use codelord_components::components::panels::music_player;
 use codelord_components::components::panels::search as search_panel;
+use codelord_components::components::renderers::svg;
 use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::animation::resources::{
@@ -72,8 +73,8 @@ use codelord_core::voice::resources::{
 use codelord_core::{
   about, animation, audio, codeshow, color, drag_and_drop, ecs, filescope, git,
   instruction, keyboard, loading, magic_zoom, navigation, page, panel,
-  playground, popup, previews, search, settings, statusbar, symbol, tabbar,
-  terminal, text_editor, theme, titlebar, toast, voice, xmb,
+  playground, popup, previews, runtime, search, settings, statusbar, symbol,
+  tabbar, terminal, text_editor, theme, titlebar, toast, voice, xmb,
 };
 use codelord_protocol::compilation::CompilationEvent;
 use codelord_protocol::event::ServerEvent;
@@ -82,9 +83,8 @@ use codelord_sdk::Sdk;
 use codelord_voice::VoiceManager;
 
 use eframe::egui;
-#[cfg(not(target_arch = "wasm32"))]
+use flume::Receiver;
 use raw_window_handle::HasWindowHandle;
-#[cfg(not(target_arch = "wasm32"))]
 use swisskit::renderer::html::HtmlRenderer;
 
 use std::sync::Arc;
@@ -126,23 +126,18 @@ pub struct Coder {
   center_animation: Option<CenterWindowAnimation>,
   /// HTML preview WebView (stored outside ECS because wry::WebView is
   /// !Send+!Sync)
-  #[cfg(not(target_arch = "wasm32"))]
   html_preview_webview: HtmlRenderer,
   /// Whether the window handle has been set for the HTML preview WebView
-  #[cfg(not(target_arch = "wasm32"))]
   html_preview_handle_set: bool,
   /// Playground WebView for templating mode (stored outside ECS)
-  #[cfg(not(target_arch = "wasm32"))]
   playground_webview: HtmlRenderer,
   /// Whether the window handle has been set for the playground WebView
-  #[cfg(not(target_arch = "wasm32"))]
   playground_handle_set: bool,
   /// Flag to clear session on next save (instead of saving)
   clear_session_on_save: bool,
   /// Channel to receive compilation events from server
-  compilation_event_rx: Option<flume::Receiver<CompilationEvent>>,
+  compilation_event_rx: Option<Receiver<CompilationEvent>>,
   /// Gilrs gamepad/remote control input handler
-  #[cfg(not(target_arch = "wasm32"))]
   gilrs: Option<gilrs::Gilrs>,
 }
 
@@ -153,10 +148,6 @@ impl Coder {
 
     let mut world = World::new();
 
-    // ========================================================================
-    // Initialize Resources
-    // ========================================================================
-
     theme::install(&mut world);
     page::install(&mut world);
     animation::install(&mut world);
@@ -164,7 +155,6 @@ impl Coder {
     navigation::install(&mut world);
     symbol::install(&mut world);
     text_editor::install(&mut world);
-
     codelord_language::install_symbol_extractors(&mut world);
     codelord_language::install_token_extractors(&mut world);
     color::install(&mut world, codelord_language::color::extract);
@@ -172,13 +162,9 @@ impl Coder {
     panel::install(&mut world);
     audio::install(&mut world);
     previews::install(&mut world);
-
     // SVG texture cache is non-Send (holds an egui TextureHandle), so it
     // lives in codelord-components — see `svg::install_non_send`.
-    codelord_components::components::renderers::svg::install_non_send(
-      &mut world,
-    );
-
+    svg::install_non_send(&mut world);
     search::install(&mut world);
     popup::install(&mut world);
     tabbar::install(&mut world);
@@ -206,7 +192,7 @@ impl Coder {
       .build()
       .expect("Failed to create Tokio runtime");
 
-    codelord_core::runtime::install(&mut world, runtime.handle().clone());
+    runtime::install(&mut world, runtime.handle().clone());
 
     let sdk = Arc::new(Sdk::new(runtime.handle().clone()));
 
@@ -254,7 +240,6 @@ impl Coder {
 
     titlebar::spawn_default(&mut world);
     statusbar::spawn_default_icons(&mut world);
-
     settings::spawn_popup(&mut world);
     navigation::spawn_context_popup(&mut world);
     tabbar::spawn_context_popup(&mut world);
@@ -402,17 +387,12 @@ impl Coder {
       prev_visualizer_status: VisualizerStatus::Idle,
       shake_animation: None,
       center_animation: None,
-      #[cfg(not(target_arch = "wasm32"))]
       html_preview_webview: HtmlRenderer::new(DEFAULT_PREVIEW_URL),
-      #[cfg(not(target_arch = "wasm32"))]
       html_preview_handle_set: false,
-      #[cfg(not(target_arch = "wasm32"))]
       playground_webview: HtmlRenderer::new(PLAYGROUND_PREVIEW_URL),
-      #[cfg(not(target_arch = "wasm32"))]
       playground_handle_set: false,
       clear_session_on_save: false,
       compilation_event_rx: Some(compilation_rx),
-      #[cfg(not(target_arch = "wasm32"))]
       gilrs: gilrs::Gilrs::new()
         .map_err(|e| log::warn!("[Gilrs] Failed to initialize: {e}"))
         .ok(),
@@ -637,7 +617,6 @@ impl eframe::App for Coder {
     // ========================================================================
     // Note: Result polling, query dispatch, and connection closing are handled
     // by ECS systems in codelord-core::previews::sqlite
-    #[cfg(not(target_arch = "wasm32"))]
     {
       // Check if we need to open a new database
       let need_open = self
@@ -704,7 +683,6 @@ impl eframe::App for Coder {
     // ========================================================================
     // Note: Result polling, query dispatch, and connection closing are handled
     // by ECS systems in codelord-core::previews::pdf
-    #[cfg(not(target_arch = "wasm32"))]
     {
       // Only load PDF when on Editor page
       let on_editor_page = self
@@ -1017,7 +995,6 @@ impl eframe::App for Coder {
     // ========================================================================
     // Gilrs Remote Control Input (NORWII N76 and similar presenters)
     // ========================================================================
-    #[cfg(not(target_arch = "wasm32"))]
     if let Some(gilrs) = self.gilrs.as_mut() {
       while let Some(event) = gilrs.next_event() {
         match event.event {
@@ -1304,7 +1281,6 @@ impl eframe::App for Coder {
     // ========================================================================
     // HTML Preview WebView Integration (after UI rendered, rect available)
     // ========================================================================
-    #[cfg(not(target_arch = "wasm32"))]
     {
       // Set window handle on first frame
       if !self.html_preview_handle_set
@@ -1373,7 +1349,6 @@ impl eframe::App for Coder {
     // ========================================================================
     // Playground WebView Integration (for templating mode)
     // ========================================================================
-    #[cfg(not(target_arch = "wasm32"))]
     {
       // Set window handle on first frame
       if !self.playground_handle_set
