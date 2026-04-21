@@ -282,6 +282,39 @@ impl Interpolate for AnimatedThemeColors {
   }
 }
 
+/// Insert theme resources + message queues into the world.
+pub fn install(world: &mut crate::ecs::world::World) {
+  use crate::ecs::message::Messages;
+  use crate::theme::components::ThemeKind;
+  use crate::theme::resources::{
+    ThemeChangedEvent, ThemeCommand, ThemeResource,
+  };
+
+  world.insert_resource(ThemeResource::new(ThemeKind::Dark));
+  world.init_resource::<Messages<ThemeCommand>>();
+  world.init_resource::<Messages<ThemeChangedEvent>>();
+}
+
+/// Register all theme-related systems. Order matters for animation.
+pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
+  use crate::ecs::schedule::IntoScheduleConfigs;
+
+  schedule.add_systems(
+    (
+      systems::theme_command_system,
+      systems::theme_animation_system,
+      systems::theme_animation_update_system,
+    )
+      .chain(),
+  );
+
+  schedule.add_systems((
+    systems::theme_change_detection_system,
+    systems::theme_overrcodelord_system,
+    systems::theme_hot_reload_system,
+  ));
+}
+
 /// Theme animation resource
 ///
 /// Smoothly transitions between themes using interpolation.

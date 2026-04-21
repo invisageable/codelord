@@ -11,13 +11,11 @@ use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::{
   ActiveAnimations, ContinuousAnimations,
 };
-use codelord_core::audio::resources::{
-  AudioDispatcher, MusicPlayerState, Playlist,
-};
+use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
 use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
 use codelord_core::drag_and_drop::{DragAnimationState, DragOrder, DragState};
 use codelord_core::ecs::message::Messages;
-use codelord_core::ecs::schedule::{IntoScheduleConfigs, Schedule};
+use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
   CenterWindowRequest, ClearSessionRequest, CompileRequest,
@@ -32,19 +30,15 @@ use codelord_core::icon::components::{
 use codelord_core::keyboard;
 use codelord_core::keyboard::{Focusable, KeyboardFocus, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
-use codelord_core::magic_zoom::{
-  MagicZoomCommand, MagicZoomState, update_magic_zoom_system,
-};
+use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
 use codelord_core::navigation;
 use codelord_core::navigation::resources::{
   ActiveWorkspaceRoot, BreadcrumbData, ExplorerContextTarget,
   ExplorerEditingState, ExplorerItemsCounter, ExplorerState, FileClipboard,
   IndentationLinesState, StagebarResource,
 };
-use codelord_core::page;
-use codelord_core::page::resources::{
-  PageResource, PageSwitchCommand, PageSwitchEvent,
-};
+use codelord_core::page::components::Page;
+use codelord_core::page::resources::PageResource;
 use codelord_core::panel;
 use codelord_core::panel::resources::{
   BottomPanelResource, LeftPanelResource, PanelCommand, RightPanelResource,
@@ -57,7 +51,7 @@ use codelord_core::tabbar::components::EditorTab;
 use codelord_core::about::resources::AboutResource;
 use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::filescope::resources::{
-  FilescopeMatcher, FilescopeMode, FilescopeResponse, FilescopeState,
+  FilescopeMode, FilescopeResponse, FilescopeState,
 };
 use codelord_core::git::resources::{
   GitBlameSettings, GitBranchState, PendingBlameRequests, PendingBranchRequests,
@@ -100,10 +94,9 @@ use codelord_core::terminal::{
 use codelord_core::text_editor;
 use codelord_core::text_editor::components::FileTab;
 use codelord_core::text_editor::components::{Cursor, TextBuffer};
-use codelord_core::theme;
 use codelord_core::theme::components::ThemeKind;
 use codelord_core::theme::resources::{
-  ThemeAction, ThemeChangedEvent, ThemeCommand, ThemeResource,
+  ThemeAction, ThemeCommand, ThemeResource,
 };
 use codelord_core::toast;
 use codelord_core::toast::components::ToastAction;
@@ -203,16 +196,10 @@ impl Coder {
     // ========================================================================
 
     // Theme system
-    world.insert_resource(ThemeResource::new(ThemeKind::Dark));
-
-    // Initialize message queues
-    world.init_resource::<Messages<ThemeCommand>>();
-    world.init_resource::<Messages<ThemeChangedEvent>>();
+    codelord_core::theme::install(&mut world);
 
     // Page system
-    world.insert_resource(PageResource::default());
-    world.init_resource::<Messages<PageSwitchCommand>>();
-    world.init_resource::<Messages<PageSwitchEvent>>();
+    codelord_core::page::install(&mut world);
 
     // Initialize delta time resource (updated each frame)
     world.insert_resource(DeltaTime::default());
@@ -380,16 +367,7 @@ impl Coder {
     world.insert_resource(BottomPanelResource::default());
     world.init_resource::<Messages<PanelCommand>>();
 
-    // Audio resources
-    world.insert_resource(AudioDispatcher);
-    world.insert_resource(MusicPlayerState::new());
-    world.insert_resource(Playlist::new());
-
-    // Initialize audio system (spawns dedicated audio thread).
-    // This is the one legit free-fn call left: lifecycle, one-shot, pre-ECS.
-    if let Err(e) = codelord_audio::init() {
-      log::error!("Failed to initialize audio system: {e}");
-    }
+    codelord_core::audio::install(&mut world);
 
     // HTML Preview state resource (WebView stored outside ECS)
     world.insert_resource(HtmlPreviewState::default());
@@ -451,9 +429,7 @@ impl Coder {
     world.insert_resource(XmbResource::new());
     world.init_resource::<Messages<XmbCommand>>();
 
-    // Magic zoom (Screen-Studio-style camera effect)
-    world.insert_resource(MagicZoomState::default());
-    world.init_resource::<Messages<MagicZoomCommand>>();
+    codelord_core::magic_zoom::install(&mut world);
 
     // About resources
     world.insert_resource(AboutResource::default());
@@ -487,9 +463,7 @@ impl Coder {
     world.init_resource::<Messages<VoiceToggleCommand>>();
     world.init_resource::<Messages<VoiceActionEvent>>();
 
-    // Filescope resources
-    world.insert_resource(FilescopeState::default());
-    world.insert_resource(FilescopeMatcher::new());
+    codelord_core::filescope::install(&mut world);
 
     // Codeshow (presenter) resources
     world.insert_resource(codelord_core::codeshow::CodeshowState::default());
@@ -716,33 +690,11 @@ impl Coder {
 
     let mut schedule = Schedule::default();
 
-    // Theme systems - order matters for animation
-    schedule.add_systems(
-      (
-        theme::systems::theme_command_system,
-        theme::systems::theme_animation_system,
-        theme::systems::theme_animation_update_system,
-      )
-        .chain(),
-    );
+    codelord_core::theme::register_systems(&mut schedule);
 
-    schedule.add_systems((
-      theme::systems::theme_change_detection_system,
-      theme::systems::theme_overrcodelord_system,
-      theme::systems::theme_hot_reload_system,
-    ));
+    codelord_core::page::register_systems(&mut schedule);
 
-    // Page systems - order matters for animation
-    schedule.add_systems(
-      (
-        page::systems::page_switch_command_system,
-        page::systems::page_transition_update_system,
-      )
-        .chain(),
-    );
-
-    // Magic zoom camera update (reads DeltaTime, drains MagicZoomCommand).
-    schedule.add_systems(update_magic_zoom_system);
+    codelord_core::magic_zoom::register_systems(&mut schedule);
 
     // Navigation systems
     schedule.add_systems((
@@ -914,11 +866,7 @@ impl Coder {
       voice::systems::voice_action_system,
     ));
 
-    // Filescope systems
-    schedule.add_systems((
-      codelord_core::filescope::systems::filescope_populate_system,
-      codelord_core::filescope::systems::filescope_tick_system,
-    ));
+    codelord_core::filescope::register_systems(&mut schedule);
 
     // SQLite preview systems (poll results, dispatch queries, close connection)
     #[cfg(not(target_arch = "wasm32"))]
@@ -1295,7 +1243,7 @@ impl eframe::App for Coder {
       let on_editor_page = self
         .world
         .get_resource::<PageResource>()
-        .map(|p| p.active_page == page::components::Page::Editor)
+        .map(|p| p.active_page == Page::Editor)
         .unwrap_or(false);
 
       // Check if we need to open a new PDF

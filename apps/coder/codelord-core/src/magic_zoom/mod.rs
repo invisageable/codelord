@@ -12,3 +12,16 @@ pub mod systems;
 pub use messages::MagicZoomCommand;
 pub use resources::MagicZoomState;
 pub use systems::update_magic_zoom_system;
+
+/// Insert magic zoom state + command queue into the world.
+pub fn install(world: &mut crate::ecs::world::World) {
+  use crate::ecs::message::Messages;
+
+  world.insert_resource(MagicZoomState::default());
+  world.init_resource::<Messages<MagicZoomCommand>>();
+}
+
+/// Register the magic zoom camera update system.
+pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
+  schedule.add_systems(update_magic_zoom_system);
+}
