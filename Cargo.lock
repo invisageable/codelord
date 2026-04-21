@@ -1409,6 +1409,7 @@ dependencies = [
  "codelord-audio",
  "codelord-git",
  "codelord-i18n",
+ "codelord-protocol",
  "csv",
  "eazy",
  "fastrand",

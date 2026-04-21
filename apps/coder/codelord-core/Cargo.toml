@@ -13,6 +13,7 @@ doctest = false
 codelord-audio = { workspace = true }
 codelord-git = { workspace = true }
 codelord-i18n = { workspace = true }
+codelord-protocol = { workspace = true }
 
 # external:crates.
 aho-corasick = { workspace = true }

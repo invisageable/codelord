@@ -15,7 +15,10 @@ use codelord_core::animation::resources::{
   ActiveAnimations, ContinuousAnimations,
 };
 use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
-use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
+use codelord_core::codeshow::{
+  CodeshowState, NavigateSlide, PendingPresentationDirectory,
+  PendingPresentationFile, SlideDirection,
+};
 use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
@@ -32,7 +35,7 @@ use codelord_core::keyboard::{Focusable, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
 use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
 use codelord_core::navigation::resources::{
-  ActiveWorkspaceRoot, ExplorerState, StagebarResource,
+  ActiveWorkspaceRoot, ExplorerState,
 };
 use codelord_core::page::components::Page;
 use codelord_core::page::resources::PageResource;
@@ -40,9 +43,7 @@ use codelord_core::panel::resources::{
   BottomPanelResource, LeftPanelResource, RightPanelResource,
 };
 use codelord_core::playground::{
-  FeedbackState, PLAYGROUND_PREVIEW_URL, PlaygroundFeedback,
-  PlaygroundHoveredSpan, PlaygroundMetrics, PlaygroundOutput,
-  PlaygroundWebviewState,
+  PLAYGROUND_PREVIEW_URL, PlaygroundOutput, PlaygroundWebviewState,
 };
 use codelord_core::previews::sqlite::SqliteQuery;
 use codelord_core::previews::{
@@ -64,7 +65,7 @@ use codelord_core::theme::resources::{
 };
 use codelord_core::toast::components::ToastAction;
 use codelord_core::toast::resources::{DismissToastCommand, ToastCommand};
-use codelord_core::ui::component::{Active, Metric};
+use codelord_core::ui::component::Active;
 use codelord_core::voice::components::VoiceState;
 use codelord_core::voice::resources::{
   ModelStatus, VisualizerStatus, VoiceActionEvent, VoiceModelState,
@@ -80,7 +81,8 @@ use codelord_protocol::compilation::CompilationEvent;
 use codelord_protocol::event::ServerEvent;
 use codelord_protocol::voice::model::VoiceAction;
 use codelord_sdk::Sdk;
-use codelord_voice::VoiceManager;
+use codelord_sdk::voice::DownloadResult;
+use codelord_voice::{VoiceManager, transcriber};
 
 use eframe::egui;
 use flume::Receiver;
@@ -112,12 +114,11 @@ pub struct Coder {
   /// Voice manager - controls recording, transcription, dispatching
   voice_manager: Option<VoiceManager>,
   /// Channel to receive voice actions from dispatcher
-  voice_action_rx: flume::Receiver<VoiceAction>,
+  voice_action_rx: Receiver<VoiceAction>,
   /// Previous voice state (to detect transitions)
   prev_voice_state: VoiceState,
   /// Voice model download receiver (when download is in progress)
-  voice_model_download_rx:
-    Option<flume::Receiver<codelord_sdk::voice::DownloadResult>>,
+  voice_model_download_rx: Option<Receiver<DownloadResult>>,
   /// Previous visualizer status (to detect error transitions)
   prev_visualizer_status: VisualizerStatus,
   /// Shake animation for error feedback
@@ -144,9 +145,14 @@ pub struct Coder {
 impl Coder {
   /// Create a new IDE application
   pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    assets::install_assets(&cc.egui_ctx);
     effects::wave::WaveCallback::init(cc);
 
     let mut world = World::new();
+    let initial_theme = assets::theme::get_theme(&world);
+
+    cc.egui_ctx
+      .set_visuals(assets::theme::theme_to_visuals(initial_theme));
 
     theme::install(&mut world);
     page::install(&mut world);
@@ -182,9 +188,7 @@ impl Coder {
     filescope::install(&mut world);
     codeshow::install(&mut world);
 
-    // ========================================================================
     // Initialize Async Runtime & Voice System
-    // ========================================================================
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
       .worker_threads(2)
@@ -195,7 +199,6 @@ impl Coder {
     runtime::install(&mut world, runtime.handle().clone());
 
     let sdk = Arc::new(Sdk::new(runtime.handle().clone()));
-
     let (voice_action_tx, voice_action_rx) = flume::unbounded::<VoiceAction>();
 
     // Install VoiceVisualizerState + hand a clone to VoiceManager below.
@@ -222,21 +225,21 @@ impl Coder {
 
     // Check voice model status on startup
     if let Some(mut model_state) = world.get_resource_mut::<VoiceModelState>() {
-      if codelord_voice::transcriber::model_exists() {
+      if transcriber::model_exists() {
         model_state.set_ready();
+
         log::info!(
           "[Voice] Model found at: {}",
-          codelord_voice::transcriber::model_path().display()
+          transcriber::model_path().display()
         );
       } else {
         model_state.status = ModelStatus::Missing;
+
         log::info!("[Voice] Model not found, will prompt on first use");
       }
     }
 
-    // ========================================================================
     // Spawn Initial Entities
-    // ========================================================================
 
     titlebar::spawn_default(&mut world);
     statusbar::spawn_default_icons(&mut world);
@@ -245,74 +248,15 @@ impl Coder {
     tabbar::spawn_context_popup(&mut world);
     previews::sqlite::spawn_export_popup(&mut world);
 
-    // ========================================================================
     // Restore Session or Create Default Tab
-    // ========================================================================
 
     let session_restored = Self::restore_session(cc, &mut world);
 
-    // Spawn default playground tab only if no session was restored
     if !session_restored {
-      let order = world
-        .get_resource_mut::<TabOrderCounter>()
-        .map(|mut counter| counter.next())
-        .unwrap_or(0);
-
-      const DEFAULT_CONTENT: &str = r#"fun main() {
-  imu view: </> ::= <>hello world!</>;
-  #dom view;
-}
-"#;
-
-      world.spawn((
-        Tab::new("playground-1", order),
-        PlaygroundTab,
-        SonarAnimation::default(),
-        TextBuffer::new(DEFAULT_CONTENT),
-        Cursor::new(0),
-        FileTab::new("playground-1.zo"), // For zo syntax highlighting
-        Active,
-        Focusable,
-        KeyboardHandler::text_editor(),
-      ));
+      playground::spawn_default_tab(&mut world);
     }
 
-    // Initialize playground metrics
-    let output_metric = world
-      .spawn(Metric::new(
-        "OUTPUT",
-        "Total size of the compiled output in bytes.",
-        0.0,
-        "tokens",
-        [255, 255, 255, 255], // White
-      ))
-      .id();
-
-    let time_metric = world
-      .spawn(Metric::new_time(
-        "TIME",
-        "Total compilation time in milliseconds.",
-        0.0,
-        [204, 255, 0, 255], // Lime green
-      ))
-      .id();
-
-    world.insert_resource(PlaygroundMetrics {
-      output: Some(output_metric),
-      time: Some(time_metric),
-    });
-
-    world.insert_resource(PlaygroundFeedback::default());
-    world.insert_resource(PlaygroundOutput::default());
-    world.insert_resource(PlaygroundHoveredSpan::default());
-    world.insert_resource(PlaygroundWebviewState::default());
-
-    // Stagebar for playground output view
-    world.insert_resource(StagebarResource::compiler_stages());
-
-    // ========================================================================
     // Setup Systems Schedule
-    // ========================================================================
 
     let mut schedule = Schedule::default();
 
@@ -336,24 +280,7 @@ impl Coder {
     filescope::register_systems(&mut schedule);
     previews::register_systems(&mut schedule);
 
-    // ========================================================================
-    // Apply Initial Theme
-    // ========================================================================
-
-    let initial_theme = assets::theme::get_theme(&world);
-
-    cc.egui_ctx
-      .set_visuals(assets::theme::theme_to_visuals(initial_theme));
-
-    // ========================================================================
-    // Install egui image loaders (for SVG support)
-    // ========================================================================
-
-    assets::install_assets(&cc.egui_ctx);
-
-    // ========================================================================
     // Setup Compilation Event Listener
-    // ========================================================================
 
     let (compilation_tx, compilation_rx) = flume::unbounded();
     let sdk_clone = Arc::clone(&sdk);
@@ -362,11 +289,13 @@ impl Coder {
       match sdk_clone.connect_events().await {
         Ok(event_rx) => {
           log::info!("[Compilation] Connected to event stream");
+
           while let Ok(event) = event_rx.recv_async().await {
             if let ServerEvent::Compilation(compilation_event) = event {
               let _ = compilation_tx.send_async(compilation_event).await;
             }
           }
+
           log::warn!("[Compilation] Event stream closed");
         }
         Err(e) => {
@@ -504,26 +433,22 @@ impl eframe::App for Coder {
     let delta = ctx.input(|i| i.stable_dt);
 
     // Update delta time resource for ECS systems
-    // ========================================================================
     if let Some(mut dt) = self.world.get_resource_mut::<DeltaTime>() {
       dt.update(delta);
     }
 
-    // ========================================================================
     // Poll Voice Actions (from async dispatcher)
-    // ========================================================================
 
     while let Ok(voice_action) = self.voice_action_rx.try_recv() {
       log::info!("[Voice] Received action: {}", voice_action.action);
+
       self.world.write_message(VoiceActionEvent {
         action: voice_action.action,
         payload: voice_action.payload,
       });
     }
 
-    // ========================================================================
     // Poll Voice Model Download (if in progress)
-    // ========================================================================
 
     if let Some(rx) = &self.voice_model_download_rx {
       while let Ok(result) = rx.try_recv() {
@@ -568,6 +493,7 @@ impl eframe::App for Coder {
               .write_message(ToastCommand::success("Voice model ready"));
 
             self.voice_model_download_rx = None;
+
             break;
           }
           codelord_sdk::voice::DownloadResult::Error(e) => {
@@ -591,15 +517,14 @@ impl eframe::App for Coder {
             )));
 
             self.voice_model_download_rx = None;
+
             break;
           }
         }
       }
     }
 
-    // ========================================================================
     // Poll Compilation Events (from server)
-    // ========================================================================
 
     // Collect events first to avoid borrow conflict.
     let compilation_events: Vec<_> = self
@@ -609,12 +534,10 @@ impl eframe::App for Coder {
       .unwrap_or_default();
 
     for event in compilation_events {
-      self.handle_compilation_event(event);
+      playground::apply_compilation_event(&mut self.world, event);
     }
 
-    // ========================================================================
     // Open SQLite Database (requires runtime.block_on, can't be in ECS system)
-    // ========================================================================
     // Note: Result polling, query dispatch, and connection closing are handled
     // by ECS systems in codelord-core::previews::sqlite
     {
@@ -635,6 +558,7 @@ impl eframe::App for Coder {
 
       if let Some(file) = need_open {
         let path_str = file.to_string_lossy().to_string();
+
         log::info!("[SQLite] Opening database: {path_str}");
 
         // Set loading state
@@ -646,6 +570,7 @@ impl eframe::App for Coder {
 
         // Open database (blocking call - needs runtime)
         let runtime_handle = self.runtime.handle().clone();
+
         match self.runtime.block_on(codelord_sdk::sqlite::open_database(
           &path_str,
           &runtime_handle,
@@ -678,9 +603,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Open PDF File (spawns background thread for rendering)
-    // ========================================================================
     // Note: Result polling, query dispatch, and connection closing are handled
     // by ECS systems in codelord-core::previews::pdf
     {
@@ -741,9 +664,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Handle CompileRequest (trigger SDK compilation)
-    // ========================================================================
 
     let compile_requests: Vec<_> = self
       .world
@@ -754,9 +675,8 @@ impl eframe::App for Coder {
 
     for (entity, source, target, stage) in compile_requests {
       log::info!(
-        "[Compilation] Triggering compilation for source ({} bytes, stage {})",
+        "[Compilation] Triggering compilation for source ({} bytes, stage {stage})",
         source.len(),
-        stage
       );
 
       // Set compiling state.
@@ -774,14 +694,11 @@ impl eframe::App for Coder {
 
       // Trigger compilation via SDK.
       self.sdk.compile(source, target, stage);
-
       // Despawn the request entity.
       self.world.despawn(entity);
     }
 
-    // ========================================================================
     // Check for Clear Session Request
-    // ========================================================================
 
     if let Some(entity) = self
       .world
@@ -794,9 +711,7 @@ impl eframe::App for Coder {
         log::info!("[Session] Session cleared and state reset");
       }
 
-    // ========================================================================
     // Handle Window Requests (need egui::Context)
-    // ========================================================================
 
     // CenterWindow
     if let Some(entity) = self
@@ -806,6 +721,7 @@ impl eframe::App for Coder {
       .next()
     {
       log::info!("[Window] Centering window on screen");
+
       self.world.despawn(entity);
 
       // Get current position, target center position, and current time
@@ -845,12 +761,15 @@ impl eframe::App for Coder {
       .next()
     {
       log::info!("[Window] Shaking window");
+
       self.world.despawn(entity);
 
       if let Some(pos) = ctx.input(|i| i.viewport().outer_rect.map(|r| r.min)) {
         let current_time = ctx.input(|i| i.time);
+
         self.shake_animation =
           Some(ShakeAnimation::new(current_time, pos.x, pos.y));
+
         if let Some(mut active) = self.world.get_resource_mut::<ActiveAnimations>()
         {
           active.increment();
@@ -870,9 +789,11 @@ impl eframe::App for Coder {
 
       if let Some(monitor_size) = ctx.input(|i| i.viewport().monitor_size) {
         let half_width = monitor_size.x / 2.0;
+
         ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
           0.0, 0.0,
         )));
+
         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
           half_width,
           monitor_size.y,
@@ -888,13 +809,16 @@ impl eframe::App for Coder {
       .next()
     {
       log::info!("[Window] Positioning window to right half");
+
       self.world.despawn(entity);
 
       if let Some(monitor_size) = ctx.input(|i| i.viewport().monitor_size) {
         let half_width = monitor_size.x / 2.0;
+
         ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
           half_width, 0.0,
         )));
+
         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
           half_width,
           monitor_size.y,
@@ -902,15 +826,8 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Codeshow (Presenter) Message Handling
-    // ========================================================================
     {
-      use codeshow::{
-        CodeshowState, NavigateSlide, PendingPresentationDirectory,
-        PendingPresentationFile, SlideDirection,
-      };
-
       // Poll pending file dialog (non-blocking)
       let file_result = self
         .world
@@ -923,6 +840,7 @@ impl eframe::App for Coder {
             self.world.get_resource_mut::<CodeshowState>()
         {
           let path_str = path.display().to_string();
+
           if let Err(e) = state.load_file(path) {
             log::error!("[Codeshow] Failed to load presentation file: {e}");
           } else {
@@ -945,6 +863,7 @@ impl eframe::App for Coder {
             self.world.get_resource_mut::<CodeshowState>()
         {
           let path_str = path.display().to_string();
+
           if let Err(e) = state.load_directory(path) {
             log::error!("[Codeshow] Failed to load presentation dir: {e}");
           } else {
@@ -992,9 +911,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Gilrs Remote Control Input (NORWII N76 and similar presenters)
-    // ========================================================================
     if let Some(gilrs) = self.gilrs.as_mut() {
       while let Some(event) = gilrs.next_event() {
         match event.event {
@@ -1033,7 +950,7 @@ impl eframe::App for Coder {
 
               if is_loaded {
                 self.world.spawn(NavigateSlide { direction: dir });
-                log::debug!("[Gilrs] Button {:?} -> {:?}", button, dir);
+                log::debug!("[Gilrs] Button {button:?} -> {dir:?}");
               }
             }
           }
@@ -1049,15 +966,8 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
-    // Run ECS Systems (process commands, events, and animations)
-    // ========================================================================
     // Must run BEFORE voice sync so VoiceToggleCommand is processed first.
     self.schedule.run(&mut self.world);
-
-    // ========================================================================
-    // Voice Manager Integration (after ECS systems process commands)
-    // ========================================================================
 
     // Get current ECS voice state (now reflects any toggle commands)
     let current_state = self
@@ -1153,9 +1063,7 @@ impl eframe::App for Coder {
     // Track state for next frame
     self.prev_voice_state = current_state;
 
-    // ========================================================================
     // Update Center Window Animation
-    // ========================================================================
 
     let center_complete = self
       .center_animation
@@ -1198,9 +1106,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Update Shake Animation
-    // ========================================================================
 
     let shake_complete = self
       .shake_animation
@@ -1272,15 +1178,11 @@ impl eframe::App for Coder {
         .map(|mut anim| anim.set_voice_active())
     });
 
-    // ========================================================================
     // Apply Theme (animated or static)
-    // ========================================================================
     let visuals = assets::theme::get_animated_visuals(&self.world);
     ctx.set_visuals(visuals);
 
-    // ========================================================================
     // HTML Preview WebView Integration (after UI rendered, rect available)
-    // ========================================================================
     {
       // Set window handle on first frame
       if !self.html_preview_handle_set
@@ -1346,9 +1248,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Playground WebView Integration (for templating mode)
-    // ========================================================================
     {
       // Set window handle on first frame
       if !self.playground_handle_set
@@ -1399,9 +1299,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // ========================================================================
     // Process continuous animations (wave, stripe, cursor blink)
-    // ========================================================================
     let animation_changes = self
       .world
       .get_resource_mut::<ContinuousAnimations>()
@@ -1416,9 +1314,7 @@ impl eframe::App for Coder {
       (0..decrements).for_each(|_| active.decrement());
     }
 
-    // ========================================================================
     // Request repaint if any animations are active
-    // ========================================================================
 
     if self
       .world
@@ -1537,18 +1433,22 @@ impl Coder {
       .show_inside(ui, |ui| {
         let rect = ui.max_rect();
         let separator_y = rect.top();
+
         let audio = self
           .world
           .get_resource::<AudioDispatcher>()
           .copied()
           .unwrap_or_default();
+
         let snapshot = audio.music_snapshot();
 
         // Calculate progress based on playback position.
         let (progress_ratio, total_width) = if let Some(ref snap) = snapshot {
           let position_secs = snap.position().as_secs_f32();
+
           let duration_secs =
             snap.duration().map(|d| d.as_secs_f32()).unwrap_or(0.0);
+
           let ratio = if duration_secs > 0.0 {
             (position_secs / duration_secs).clamp(0.0, 1.0)
           } else {
@@ -1687,7 +1587,6 @@ impl Coder {
     // Magic zoom: apply transform to every overlay layer (popups, file
     // picker, dialogs, toasts) now that they've all rendered.
     self.propagate_magic_zoom(&ctx);
-
     // Check if voice model download toast should be shown
     self.check_voice_model_toast();
 
@@ -2019,6 +1918,7 @@ impl Coder {
 
         // Spawn download in background
         let download_rx = codelord_sdk::voice::spawn_download();
+
         self.voice_model_download_rx = Some(download_rx);
       }
       _ => {
@@ -2060,6 +1960,7 @@ impl Coder {
   ) -> bool {
     let Some(storage) = cc.storage else {
       log::debug!("[Session] No storage available");
+
       return false;
     };
 
@@ -2112,6 +2013,7 @@ impl Coder {
           world.get_resource_mut::<ActiveWorkspaceRoot>()
       {
         active_ws.path = Some(first_root.clone());
+
         active_ws.name = first_root
           .file_name()
           .map(|n| n.to_string_lossy().to_string());
@@ -2288,109 +2190,6 @@ impl Coder {
       Focusable,
       KeyboardHandler::text_editor(),
     ));
-  }
-
-  /// Handle compilation events from the server.
-  fn handle_compilation_event(&mut self, event: CompilationEvent) {
-    use codelord_protocol::compilation::Stage;
-
-    match event {
-      CompilationEvent::Started => {
-        log::info!("[Compilation] Started");
-
-        if let Some(mut output) =
-          self.world.get_resource_mut::<PlaygroundOutput>()
-        {
-          output.compilation.is_compiling = true;
-        }
-        if let Some(mut feedback) =
-          self.world.get_resource_mut::<PlaygroundFeedback>()
-        {
-          feedback.state = FeedbackState::Running;
-        }
-      }
-      CompilationEvent::Stage {
-        stage,
-        data,
-        elapsed_time,
-      } => {
-        log::info!(
-          "[Compilation] Stage {stage:?} complete ({} bytes, {elapsed_time:.3}time)",
-          data.len(),
-        );
-
-        if let Some(mut output) =
-          self.world.get_resource_mut::<PlaygroundOutput>()
-        {
-          output.compilation.elapsed_time = elapsed_time;
-          match stage {
-            Stage::Tokens => {
-              output.compilation.token_count =
-                data.matches("\"kind\":").count() - 1; // -1 for EOF.
-              output.compilation.tokens = Some(data);
-            }
-            Stage::Tree => {
-              output.compilation.node_count =
-                data.matches("\"token\":").count();
-              output.compilation.tree = Some(data);
-            }
-            Stage::Sir => {
-              output.compilation.insn_count = data.matches("\"kind\":").count();
-              output.compilation.sir = Some(data);
-            }
-            Stage::Asm => {
-              output.compilation.asm_bytes = data.len();
-              output.compilation.asm = Some(data);
-            }
-            Stage::Ui => {
-              // Count commands in the JSON array
-              output.compilation.ui_count =
-                data.matches("\"BeginContainer\"").count()
-                  + data.matches("\"EndContainer\"").count()
-                  + data.matches("\"Text\"").count()
-                  + data.matches("\"Button\"").count()
-                  + data.matches("\"TextInput\"").count()
-                  + data.matches("\"Image\"").count();
-              output.compilation.ui = Some(data);
-
-              // Trigger webview reload when UI stage completes
-              if let Some(mut webview_state) =
-                self.world.get_resource_mut::<PlaygroundWebviewState>()
-              {
-                webview_state.needs_reload = true;
-              }
-            }
-          }
-        }
-      }
-      CompilationEvent::Error { message, span } => {
-        log::warn!("[Compilation] Error: {message} at {span:?}");
-
-        if let Some(mut output) =
-          self.world.get_resource_mut::<PlaygroundOutput>()
-        {
-          output.compilation.is_compiling = false;
-        }
-      }
-      CompilationEvent::Done { success } => {
-        log::info!("[Compilation] Done (success: {success})");
-
-        if let Some(mut output) =
-          self.world.get_resource_mut::<PlaygroundOutput>()
-        {
-          output.compilation.is_compiling = false;
-        }
-        if let Some(mut feedback) =
-          self.world.get_resource_mut::<PlaygroundFeedback>()
-        {
-          feedback.state = if success {
-            FeedbackState::Success
-          } else {
-            FeedbackState::Ready
-          };
-        }
-      }
-    }
   }
 }
 
