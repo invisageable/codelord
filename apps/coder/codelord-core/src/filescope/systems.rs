@@ -1,8 +1,8 @@
 use crate::events::components::OpenFileRequest;
-use crate::file_picker::components::FilePickerItem;
-use crate::file_picker::resources::{
-  FilePickerAction, FilePickerCommand, FilePickerMatcher, FilePickerResponse,
-  FilePickerState,
+use crate::filescope::components::FilescopeItem;
+use crate::filescope::resources::{
+  FilescopeAction, FilescopeCommand, FilescopeMatcher, FilescopeResponse,
+  FilescopeState,
 };
 use crate::navigation::resources::ExplorerState;
 
@@ -14,74 +14,74 @@ use walkdir::WalkDir;
 
 use std::path::PathBuf;
 
-/// System to process file picker commands.
-pub fn file_picker_command_system(
-  mut commands: MessageReader<FilePickerCommand>,
-  mut state: ResMut<FilePickerState>,
-  matcher: ResMut<FilePickerMatcher>,
+/// System to process filescope commands.
+pub fn filescope_command_system(
+  mut commands: MessageReader<FilescopeCommand>,
+  mut state: ResMut<FilescopeState>,
+  matcher: ResMut<FilescopeMatcher>,
 ) {
   for command in commands.read() {
     match &command.action {
-      FilePickerAction::Show(mode) => {
+      FilescopeAction::Show(mode) => {
         state.show(*mode);
       }
-      FilePickerAction::Hide => {
+      FilescopeAction::Hide => {
         state.hide();
       }
-      FilePickerAction::Toggle(mode) => {
+      FilescopeAction::Toggle(mode) => {
         state.toggle(*mode);
       }
-      FilePickerAction::UpdateQuery(query) => {
+      FilescopeAction::UpdateQuery(query) => {
         state.set_query(query.clone());
         // Pattern will be updated in tick system.
       }
-      FilePickerAction::SelectPrevious => {
+      FilescopeAction::SelectPrevious => {
         if let Some(m) = matcher.matcher.as_ref() {
           state.move_selection(-1, m.matched_count());
         }
       }
-      FilePickerAction::SelectNext => {
+      FilescopeAction::SelectNext => {
         if let Some(m) = matcher.matcher.as_ref() {
           state.move_selection(1, m.matched_count());
         }
       }
-      FilePickerAction::PageUp => {
+      FilescopeAction::PageUp => {
         if let Some(m) = matcher.matcher.as_ref() {
           state.page_up(m.matched_count());
         }
       }
-      FilePickerAction::PageDown => {
+      FilescopeAction::PageDown => {
         if let Some(m) = matcher.matcher.as_ref() {
           state.page_down(m.matched_count());
         }
       }
-      FilePickerAction::SelectFirst => {
+      FilescopeAction::SelectFirst => {
         state.selection = 0;
       }
-      FilePickerAction::SelectLast => {
+      FilescopeAction::SelectLast => {
         if let Some(m) = matcher.matcher.as_ref() {
           state.selection = m.matched_count().saturating_sub(1);
         }
       }
-      FilePickerAction::TogglePreview => {
+      FilescopeAction::TogglePreview => {
         state.show_preview = !state.show_preview;
       }
-      FilePickerAction::Refresh => {
+      FilescopeAction::Refresh => {
         // Will be handled by populate system.
       }
-      FilePickerAction::Confirm(_) => {
+      FilescopeAction::Confirm(_) => {
         // Handled by UI layer.
       }
     }
   }
 }
 
-/// System to populate file picker with items when shown.
+/// System to populate filescope with items when shown.
 /// This spawns a background thread to avoid blocking the UI.
-pub fn file_picker_populate_system(
-  mut state: ResMut<FilePickerState>,
+pub fn filescope_populate_system(
+  mut state: ResMut<FilescopeState>,
   explorer: Res<ExplorerState>,
-  mut matcher: ResMut<FilePickerMatcher>,
+  mut matcher: ResMut<FilescopeMatcher>,
 ) {
   // Only populate when visible and not already populated.
   if !state.visible || state.populated {
@@ -144,7 +144,7 @@ pub fn file_picker_populate_system(
           continue;
         }
 
-        let item = FilePickerItem::new_with_root(path, Some(root));
+        let item = FilescopeItem::new_with_root(path, Some(root));
         let text = item.display_text();
 
         injector.push(item, |_, cols| {
@@ -162,9 +162,9 @@ pub fn file_picker_populate_system(
 }
 
 /// System to tick the fuzzy matcher each frame.
-pub fn file_picker_tick_system(
-  state: Res<FilePickerState>,
-  mut matcher: ResMut<FilePickerMatcher>,
+pub fn filescope_tick_system(
+  state: Res<FilescopeState>,
+  mut matcher: ResMut<FilescopeMatcher>,
 ) {
   if !state.visible {
     return;
@@ -183,8 +183,8 @@ pub fn file_picker_tick_system(
 
 /// Get selected file path from the picker.
 pub fn get_selected_path(
-  state: &FilePickerState,
-  matcher: &FilePickerMatcher,
+  state: &FilescopeState,
+  matcher: &FilescopeMatcher,
 ) -> Option<PathBuf> {
   matcher
     .get()
@@ -192,19 +192,19 @@ pub fn get_selected_path(
     .map(|item| item.path.clone())
 }
 
-/// Handle file picker response and spawn appropriate events.
-pub fn handle_file_picker_response(
+/// Handle filescope response and spawn appropriate events.
+pub fn handle_filescope_response(
   world: &mut World,
-  response: FilePickerResponse,
+  response: FilescopeResponse,
 ) {
   match response {
-    FilePickerResponse::Select(path, _action) => {
+    FilescopeResponse::Select(path, _action) => {
       world.spawn(OpenFileRequest::new(path));
-      world.resource_mut::<FilePickerState>().hide();
+      world.resource_mut::<FilescopeState>().hide();
     }
-    FilePickerResponse::Close => {
-      world.resource_mut::<FilePickerState>().hide();
+    FilescopeResponse::Close => {
+      world.resource_mut::<FilescopeState>().hide();
     }
-    FilePickerResponse::None => {}
+    FilescopeResponse::None => {}
   }
 }

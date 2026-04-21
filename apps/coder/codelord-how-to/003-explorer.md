@@ -1,12 +1,12 @@
 # 003-explorer.
 
-The file picker lets you fuzzy-search for any file in your project. Type a few characters and it narrows down instantly.
+The filescope lets you fuzzy-search for any file in your project. Type a few characters and it narrows down instantly.
 
 > *NOTE: You need to have a project already opened.*
 
 ![explorer-empty-state](assets/how-to/003-explorer-empty-state.gif)
 
-**How:** Click on OPEN  `Cmd+P` to open the file picker. Start typing a filename. Use arrow keys to select, `Enter` to open. `Esc` or toggle back `Cmd+P` to dismiss.
+**How:** Click on OPEN  `Cmd+P` to open the filescope. Start typing a filename. Use arrow keys to select, `Enter` to open. `Esc` or toggle back `Cmd+P` to dismiss.
 
 ![explorer-tree-actions](assets/how-to/003-explorer-tree.actions.gif)
 

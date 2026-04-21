@@ -1,6 +1,6 @@
 use crate::animation::components::Animatable;
-use crate::file_picker::components::{
-  CachedPreview, DirEntry, FilePickerItem, PickerQuery, SelectAction,
+use crate::filescope::components::{
+  CachedPreview, DirEntry, FilescopeItem, PickerQuery, SelectAction,
 };
 
 use bevy_ecs::message::Message;
@@ -15,9 +15,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// File picker mode determines what items are shown.
+/// Filescope mode determines what items are shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum FilePickerMode {
+pub enum FilescopeMode {
   /// Show all files in the workspace.
   #[default]
   Files,
@@ -114,13 +114,13 @@ impl RowPaddingAnim {
   }
 }
 
-/// Main file picker state resource.
+/// Main filescope state resource.
 #[derive(Resource)]
-pub struct FilePickerState {
+pub struct FilescopeState {
   /// Whether the picker is visible.
   pub visible: bool,
   /// Current picker mode.
-  pub mode: FilePickerMode,
+  pub mode: FilescopeMode,
   /// Search input string.
   pub search_input: String,
   /// Parsed query.
@@ -153,11 +153,11 @@ pub struct FilePickerState {
   pub prev_selection: Option<usize>,
 }
 
-impl Default for FilePickerState {
+impl Default for FilescopeState {
   fn default() -> Self {
     Self {
       visible: false,
-      mode: FilePickerMode::Files,
+      mode: FilescopeMode::Files,
       search_input: String::new(),
       query: PickerQuery::default(),
       selection: 0,
@@ -187,13 +187,13 @@ impl Default for FilePickerState {
   }
 }
 
-impl FilePickerState {
+impl FilescopeState {
   pub fn new() -> Self {
     Self::default()
   }
 
-  /// Show the file picker with the given mode.
-  pub fn show(&mut self, mode: FilePickerMode) {
+  /// Show the filescope with the given mode.
+  pub fn show(&mut self, mode: FilescopeMode) {
     self.visible = true;
     self.mode = mode;
     self.search_input.clear();
@@ -205,14 +205,14 @@ impl FilePickerState {
     self.version.fetch_add(1, Ordering::Relaxed);
   }
 
-  /// Hide the file picker.
+  /// Hide the filescope.
   pub fn hide(&mut self) {
     self.visible = false;
     self.animation_start = None;
   }
 
-  /// Toggle the file picker visibility.
-  pub fn toggle(&mut self, mode: FilePickerMode) {
+  /// Toggle the filescope visibility.
+  pub fn toggle(&mut self, mode: FilescopeMode) {
     if self.visible && self.mode == mode {
       self.hide();
     } else {
@@ -273,7 +273,7 @@ impl FilePickerState {
 /// Fuzzy matcher wrapper using nucleo.
 pub struct FuzzyMatcher {
   /// The nucleo matcher instance.
-  matcher: Nucleo<FilePickerItem>,
+  matcher: Nucleo<FilescopeItem>,
 }
 
 impl FuzzyMatcher {
@@ -294,7 +294,7 @@ impl FuzzyMatcher {
   }
 
   /// Push an item into the matcher.
-  pub fn push(&self, item: FilePickerItem) {
+  pub fn push(&self, item: FilescopeItem) {
     let text = item.display_text();
 
     self
@@ -304,7 +304,7 @@ impl FuzzyMatcher {
   }
 
   /// Get injector for background population.
-  pub fn injector(&self) -> nucleo::Injector<FilePickerItem> {
+  pub fn injector(&self) -> nucleo::Injector<FilescopeItem> {
     self.matcher.injector()
   }
 
@@ -335,7 +335,7 @@ impl FuzzyMatcher {
   }
 
   /// Get item at index in matched results.
-  pub fn get(&self, index: usize) -> Option<&FilePickerItem> {
+  pub fn get(&self, index: usize) -> Option<&FilescopeItem> {
     self
       .matcher
       .snapshot()
@@ -368,7 +368,7 @@ impl FuzzyMatcher {
   }
 
   /// Iterate over all matched items (for rendering).
-  pub fn iter_matches(&self) -> impl Iterator<Item = &FilePickerItem> {
+  pub fn iter_matches(&self) -> impl Iterator<Item = &FilescopeItem> {
     let snapshot = self.matcher.snapshot();
 
     (0..snapshot.matched_item_count())
@@ -384,11 +384,11 @@ impl Default for FuzzyMatcher {
 
 /// Resource holding the fuzzy matcher instance.
 #[derive(Resource, Default)]
-pub struct FilePickerMatcher {
+pub struct FilescopeMatcher {
   pub matcher: Option<FuzzyMatcher>,
 }
 
-impl FilePickerMatcher {
+impl FilescopeMatcher {
   pub fn new() -> Self {
     Self {
       matcher: Some(FuzzyMatcher::new()),
@@ -408,21 +408,21 @@ impl FilePickerMatcher {
   }
 }
 
-/// Command to control file picker.
+/// Command to control filescope.
 #[derive(Message, Debug, Clone)]
-pub struct FilePickerCommand {
-  pub action: FilePickerAction,
+pub struct FilescopeCommand {
+  pub action: FilescopeAction,
 }
 
-/// Actions that can be performed on the file picker.
+/// Actions that can be performed on the filescope.
 #[derive(Debug, Clone)]
-pub enum FilePickerAction {
-  /// Show the file picker with the given mode.
-  Show(FilePickerMode),
-  /// Hide the file picker.
+pub enum FilescopeAction {
+  /// Show the filescope with the given mode.
+  Show(FilescopeMode),
+  /// Hide the filescope.
   Hide,
-  /// Toggle the file picker with the given mode.
-  Toggle(FilePickerMode),
+  /// Toggle the filescope with the given mode.
+  Toggle(FilescopeMode),
   /// Update the search query.
   UpdateQuery(String),
   /// Move selection up.
@@ -445,9 +445,9 @@ pub enum FilePickerAction {
   Refresh,
 }
 
-/// Response from the file picker.
+/// Response from the filescope.
 #[derive(Debug, Clone)]
-pub enum FilePickerResponse {
+pub enum FilescopeResponse {
   /// User selected an item.
   Select(PathBuf, SelectAction),
   /// User closed the picker.
