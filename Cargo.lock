@@ -1348,6 +1348,7 @@ name = "codelord-coder"
 version = "0.0.1"
 dependencies = [
  "bevy_ecs",
+ "codelord-audio",
  "codelord-components",
  "codelord-core",
  "codelord-language",

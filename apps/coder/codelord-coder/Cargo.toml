@@ -10,6 +10,7 @@ doctest = false
 # internal:sources.
 
 # internal:crates.
+codelord-audio = { workspace = true }
 codelord-components = { workspace = true }
 codelord-core = { workspace = true }
 codelord-language = { workspace = true }

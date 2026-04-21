@@ -1,7 +1,7 @@
 //! Voice control ECS systems.
 
 use crate::animation::components::DeltaTime;
-use crate::audio::resources::MusicPlayerState;
+use crate::audio::resources::{AudioDispatcher, MusicPlayerState, Playlist};
 use crate::ecs::message::Messages;
 use crate::ecs::world::World;
 use crate::events::{
@@ -233,14 +233,26 @@ fn execute_voice_action(
       run_compiler_stage(world, 3, PlaygroundMode::Templating);
     }
     "PlayPauseMusic" => {
+      let audio = world
+        .get_resource::<AudioDispatcher>()
+        .copied()
+        .unwrap_or_default();
+
+      // Snapshot the playlist so the mut borrow of MusicPlayerState
+      // doesn't collide with the Playlist read.
+      let playlist = world
+        .get_resource::<Playlist>()
+        .cloned()
+        .unwrap_or_default();
+
       if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>() {
-        state.toggle_playback();
+        state.toggle(&audio, &playlist);
       }
     }
     "TogglePlayer" => {
       let current_time = world
         .get_resource::<DeltaTime>()
-        .map(|t| t.elapsed())
+        .map(|dt| dt.elapsed())
         .unwrap_or(0.0);
 
       if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>() {
@@ -290,6 +302,7 @@ fn run_compiler_stage(world: &mut World, stage: usize, mode: PlaygroundMode) {
       (3, PlaygroundMode::Templating) => 4,
       _ => stage as u8,
     };
+
     world.spawn(CompileRequest::new(source, target_str, protocol_stage));
   }
 }

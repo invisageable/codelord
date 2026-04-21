@@ -11,8 +11,9 @@ use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::{
   ActiveAnimations, ContinuousAnimations,
 };
-use codelord_core::audio;
-use codelord_core::audio::resources::{MusicPlayerState, Playlist};
+use codelord_core::audio::resources::{
+  AudioDispatcher, MusicPlayerState, Playlist,
+};
 use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
 use codelord_core::drag_and_drop::{DragAnimationState, DragOrder, DragState};
 use codelord_core::ecs::message::Messages;
@@ -380,11 +381,13 @@ impl Coder {
     world.init_resource::<Messages<PanelCommand>>();
 
     // Audio resources
+    world.insert_resource(AudioDispatcher);
     world.insert_resource(MusicPlayerState::new());
     world.insert_resource(Playlist::new());
 
     // Initialize audio system (spawns dedicated audio thread).
-    if let Err(e) = audio::init() {
+    // This is the one legit free-fn call left: lifecycle, one-shot, pre-ECS.
+    if let Err(e) = codelord_audio::init() {
       log::error!("Failed to initialize audio system: {e}");
     }
 
@@ -1057,6 +1060,18 @@ impl Coder {
 impl eframe::App for Coder {
   fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
     egui::Color32::TRANSPARENT.to_normalized_gamma_f32()
+  }
+
+  /// Called once when the app is shutting down. Stops the music and
+  /// terminates the dedicated audio thread cleanly.
+  fn on_exit(&mut self) {
+    let audio = self
+      .world
+      .get_resource::<AudioDispatcher>()
+      .copied()
+      .unwrap_or_default();
+
+    audio.shutdown();
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
@@ -2132,7 +2147,12 @@ impl Coder {
       .show_inside(ui, |ui| {
         let rect = ui.max_rect();
         let separator_y = rect.top();
-        let snapshot = audio::get_music_snapshot();
+        let audio = self
+          .world
+          .get_resource::<AudioDispatcher>()
+          .copied()
+          .unwrap_or_default();
+        let snapshot = audio.music_snapshot();
 
         // Calculate progress based on playback position.
         let (progress_ratio, total_width) = if let Some(ref snap) = snapshot {
@@ -2178,7 +2198,7 @@ impl Coder {
                 "Seeking to: {seek_position:?} (ratio: {seek_ratio:.2})",
               );
 
-              audio::music_seek(seek_position);
+              audio.music_seek(seek_position);
             }
           }
 
@@ -2212,7 +2232,8 @@ impl Coder {
           && let Some(mut state) =
             self.world.get_resource_mut::<MusicPlayerState>()
         {
-          state.is_playing = snap.state == audio::PlaybackState::Playing;
+          state.is_playing =
+            snap.state == codelord_audio::PlaybackState::Playing;
         }
 
         music_player::show(ui, &mut self.world);
