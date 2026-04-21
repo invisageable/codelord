@@ -11,3 +11,8 @@ pub use resources::{
   CodeshowState, PendingPresentationDirectory, PendingPresentationFile,
   SlideTransition,
 };
+
+/// Insert codeshow (presenter) state resource.
+pub fn install(world: &mut crate::ecs::world::World) {
+  world.insert_resource(CodeshowState::default());
+}

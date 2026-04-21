@@ -6,6 +6,18 @@
 pub mod resources;
 pub mod systems;
 
+/// Insert sticky-scroll settings. `SymbolExtractors` registration is
+/// handled by the caller (it needs language-specific extract fns from
+/// `codelord-language`, which `codelord-core` does not depend on).
+pub fn install(world: &mut crate::ecs::world::World) {
+  world.insert_resource(StickyScrollSettings::default());
+}
+
+/// Register symbol-extraction system.
+pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
+  schedule.add_systems(systems::extract_symbols_system);
+}
+
 use bevy_ecs::component::Component;
 use bevy_ecs::resource::Resource;
 

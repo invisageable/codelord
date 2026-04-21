@@ -273,3 +273,12 @@ fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
 
   (h * 360.0, s, l)
 }
+
+/// Insert color-detection resources. `extract` is the language-specific
+/// color-literal parser injected by the caller (see
+/// `codelord_language::color::extract`).
+pub fn install(world: &mut crate::ecs::world::World, extract: ExtractColorsFn) {
+  world.insert_resource(ColorCache::new());
+  world.insert_resource(ColorExtractor::new(extract));
+  world.insert_resource(ColorPickerState::default());
+}

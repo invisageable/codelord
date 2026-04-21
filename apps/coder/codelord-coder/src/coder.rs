@@ -2,19 +2,21 @@ use codelord_components::assets;
 use codelord_components::components::effects;
 use codelord_components::components::indicators::frame_history;
 use codelord_components::components::layouts::base;
-use codelord_components::components::organisms::{statusbar, titlebar};
+use codelord_components::components::organisms::{
+  statusbar as statusbar_view, titlebar,
+};
 use codelord_components::components::overlays;
 use codelord_components::components::panels::music_player;
 use codelord_components::components::panels::search as search_panel;
 use codelord_components::components::renderers::svg::SvgTextureCacheResource;
 use codelord_core::animation::components::DeltaTime;
+use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::animation::resources::{
   ActiveAnimations, ContinuousAnimations,
 };
 use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
 use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
-use codelord_core::drag_and_drop::{DragAnimationState, DragOrder, DragState};
-use codelord_core::ecs::message::Messages;
+use codelord_core::drag_and_drop::DragOrder;
 use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
@@ -24,95 +26,67 @@ use codelord_core::events::{
   PositionWindowRightHalfRequest, SaveFileRequest, ShakeWindowRequest,
   ToggleBlameRequest, ToggleSearchRequest,
 };
-use codelord_core::icon::components::{
-  Icon, StatusbarIconBundle, TitlebarIconBundle,
-};
-use codelord_core::keyboard;
-use codelord_core::keyboard::{Focusable, KeyboardFocus, KeyboardHandler};
-use codelord_core::loading::{GlobalLoading, LoadingTask};
-use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
-use codelord_core::navigation;
-use codelord_core::navigation::resources::{
-  ActiveWorkspaceRoot, BreadcrumbData, ExplorerContextTarget,
-  ExplorerEditingState, ExplorerItemsCounter, ExplorerState, FileClipboard,
-  IndentationLinesState, StagebarResource,
-};
-use codelord_core::page::components::Page;
-use codelord_core::page::resources::PageResource;
-use codelord_core::panel;
-use codelord_core::panel::resources::{
-  BottomPanelResource, LeftPanelResource, PanelCommand, RightPanelResource,
-};
-use codelord_core::playground;
-use codelord_core::runtime::RuntimeHandle;
-use codelord_core::search::SearchState;
-use codelord_core::tabbar::components::EditorTab;
-
-use codelord_core::about::resources::AboutResource;
-use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::filescope::resources::{
   FilescopeMode, FilescopeResponse, FilescopeState,
 };
-use codelord_core::git::resources::{
-  GitBlameSettings, GitBranchState, PendingBlameRequests, PendingBranchRequests,
+use codelord_core::icon::components::{
+  Icon, StatusbarIconBundle, TitlebarIconBundle,
 };
-use codelord_core::instruction::resources::InstructionsResource;
+use codelord_core::keyboard::{Focusable, KeyboardHandler};
+use codelord_core::loading::{GlobalLoading, LoadingTask};
+use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
+use codelord_core::navigation::resources::{
+  ActiveWorkspaceRoot, ExplorerState, StagebarResource,
+};
+use codelord_core::page::components::Page;
+use codelord_core::page::resources::PageResource;
+use codelord_core::panel::resources::{
+  BottomPanelResource, LeftPanelResource, RightPanelResource,
+};
 use codelord_core::playground::{
   FeedbackState, PLAYGROUND_PREVIEW_URL, PlaygroundFeedback,
   PlaygroundHoveredSpan, PlaygroundMetrics, PlaygroundOutput,
   PlaygroundWebviewState,
 };
-use codelord_core::popup;
 use codelord_core::popup::components::{
   MenuItem, Popup, PopupContent, PopupPosition,
 };
-use codelord_core::popup::resources::{PopupCommand, PopupResource};
+use codelord_core::popup::resources::PopupResource;
 use codelord_core::previews::sqlite::SqliteQuery;
 use codelord_core::previews::{
-  CsvPreviewState, DEFAULT_PREVIEW_URL, FontPreviewState, HtmlPreviewState,
-  MarkdownPreviewState, PdfConnection, PdfPageCache, PdfPreviewState,
-  PdfSelection, PdfTextCache, SqliteConnection, SqlitePreviewState,
-  SvgPreviewState, XlsPreviewState, close_pdf_connection_system,
-  close_sqlite_connection_system, dispatch_pdf_queries_system,
-  dispatch_sqlite_queries_system, poll_pdf_results_system,
-  poll_sqlite_results_system,
+  DEFAULT_PREVIEW_URL, FontPreviewState, HtmlPreviewState, PdfConnection,
+  PdfPreviewState, SqliteConnection, SqlitePreviewState, SvgPreviewState,
+  XlsPreviewState,
 };
-use codelord_core::settings::resources::SettingsResource;
-use codelord_core::statusbar::resources::{
-  LineColumnAnimation, StatusbarResource,
-};
-use codelord_core::statusbar::systems::line_column_animation_system;
+use codelord_core::runtime::RuntimeHandle;
+use codelord_core::search::SearchState;
+use codelord_core::statusbar::resources::StatusbarResource;
+use codelord_core::tabbar::components::EditorTab;
 use codelord_core::tabbar::components::{PlaygroundTab, SonarAnimation, Tab};
 use codelord_core::tabbar::{
-  self, TabContextTarget, TabOrderCounter, UnsavedChangesDialog,
-  UnsavedChangesResponse, ZoomState,
+  TabOrderCounter, UnsavedChangesDialog, UnsavedChangesResponse,
 };
-use codelord_core::terminal;
-use codelord_core::terminal::{
-  TerminalBridges, TerminalIdCounter, TerminalRegistry, TerminalTabOrderCounter,
-};
-use codelord_core::text_editor;
 use codelord_core::text_editor::components::FileTab;
 use codelord_core::text_editor::components::{Cursor, TextBuffer};
 use codelord_core::theme::components::ThemeKind;
 use codelord_core::theme::resources::{
   ThemeAction, ThemeCommand, ThemeResource,
 };
-use codelord_core::toast;
 use codelord_core::toast::components::ToastAction;
-use codelord_core::toast::resources::{
-  DismissToastCommand, ToastCommand, ToasterResource,
-};
+use codelord_core::toast::resources::{DismissToastCommand, ToastCommand};
 use codelord_core::ui::component::{Active, Metric};
 use codelord_core::ui::component::{DecorationBundle, DecorationType};
-use codelord_core::voice;
 use codelord_core::voice::components::VoiceState;
 use codelord_core::voice::resources::{
   ModelStatus, VisualizerStatus, VoiceActionEvent, VoiceModelState,
   VoiceResource, VoiceToggleCommand,
 };
-use codelord_core::xmb;
-use codelord_core::xmb::resources::{XmbCommand, XmbResource};
+use codelord_core::{
+  about, animation, audio, codeshow, color, drag_and_drop, ecs, filescope, git,
+  instruction, keyboard, language, loading, magic_zoom, navigation, page,
+  panel, playground, popup, previews, search, settings, statusbar, symbol,
+  tabbar, terminal, text_editor, theme, toast, token, voice, xmb,
+};
 use codelord_protocol::compilation::CompilationEvent;
 use codelord_protocol::event::ServerEvent;
 use codelord_protocol::voice::model::VoiceAction;
@@ -195,71 +169,47 @@ impl Coder {
     // Initialize Resources
     // ========================================================================
 
-    // Theme system
-    codelord_core::theme::install(&mut world);
-
-    // Page system
-    codelord_core::page::install(&mut world);
-
-    // Initialize delta time resource (updated each frame)
-    world.insert_resource(DeltaTime::default());
-
-    // Initialize active animations counter
-    world.insert_resource(ActiveAnimations::default());
-
-    // Initialize continuous animations tracker
-    world.insert_resource(ContinuousAnimations::default());
-
-    // Global loading indicator
-    world.insert_resource(GlobalLoading::default());
-
-    world.insert_resource(ExplorerItemsCounter::default());
-    world.insert_resource(ExplorerState::default());
-    world.insert_resource(ActiveWorkspaceRoot::default());
-    world.insert_resource(BreadcrumbData::default());
-    world
-      .insert_resource(codelord_core::symbol::StickyScrollSettings::default());
-    world.insert_resource(
-      codelord_core::text_editor::resources::IndentGuidesSettings::default(),
-    );
-    world.insert_resource(IndentationLinesState::default());
-    world.insert_resource(ExplorerContextTarget::default());
-    world.insert_resource(ExplorerEditingState::default());
-    world.insert_resource(FileClipboard::default());
+    theme::install(&mut world);
+    page::install(&mut world);
+    animation::install(&mut world);
+    loading::install(&mut world);
+    navigation::install(&mut world);
+    symbol::install(&mut world);
+    text_editor::install(&mut world);
 
     // Symbol extractors (registered from codelord-language)
     world.insert_resource(
-      codelord_core::symbol::resources::SymbolExtractors::new()
+      symbol::resources::SymbolExtractors::new()
         .register(
-          codelord_core::language::Language::C,
+          language::Language::C,
           codelord_language::language::c::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Elixir,
+          language::Language::Elixir,
           codelord_language::language::elixir::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::JavaScript,
+          language::Language::JavaScript,
           codelord_language::language::javascript::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Json,
+          language::Language::Json,
           codelord_language::language::json::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Python,
+          language::Language::Python,
           codelord_language::language::python::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Rust,
+          language::Language::Rust,
           codelord_language::language::rust::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Zig,
+          language::Language::Zig,
           codelord_language::language::zig::symbols::extract_symbols,
         )
         .register(
-          codelord_core::language::Language::Zo,
+          language::Language::Zo,
           codelord_language::language::zo::symbols::extract_symbols,
         ),
     );
@@ -267,206 +217,114 @@ impl Coder {
     // Token extractors for syntax highlighting (registered from
     // codelord-language)
     world.insert_resource(
-      codelord_core::token::TokenExtractors::new()
+      token::TokenExtractors::new()
         .register(
-          codelord_core::language::Language::Bash,
+          language::Language::Bash,
           codelord_language::language::bash::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::C,
+          language::Language::C,
           codelord_language::language::c::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Conf,
+          language::Language::Conf,
           codelord_language::language::conf::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Css,
+          language::Language::Css,
           codelord_language::language::css::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Diff,
+          language::Language::Diff,
           codelord_language::language::diff::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Elixir,
+          language::Language::Elixir,
           codelord_language::language::elixir::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Env,
+          language::Language::Env,
           codelord_language::language::env::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Gleam,
+          language::Language::Gleam,
           codelord_language::language::gleam::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Go,
+          language::Language::Go,
           codelord_language::language::go::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Html,
+          language::Language::Html,
           codelord_language::language::html::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::JavaScript,
+          language::Language::JavaScript,
           codelord_language::language::javascript::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Json,
+          language::Language::Json,
           codelord_language::language::json::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Markdown,
+          language::Language::Markdown,
           codelord_language::language::markdown::highlights::parse,
         )
         // .register(
-        //   codelord_core::language::Language::Ocaml,
+        //   language::Language::Ocaml,
         //   codelord_language::language::ocaml::highlights::parse,
         // )
         .register(
-          codelord_core::language::Language::Python,
+          language::Language::Python,
           codelord_language::language::python::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Rust,
+          language::Language::Rust,
           codelord_language::language::rust::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::TypeScript,
+          language::Language::TypeScript,
           codelord_language::language::typescript::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Yaml,
+          language::Language::Yaml,
           codelord_language::language::yaml::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Zig,
+          language::Language::Zig,
           codelord_language::language::zig::highlights::parse,
         )
         .register(
-          codelord_core::language::Language::Zo,
+          language::Language::Zo,
           codelord_language::language::zo::highlights::parse,
         ),
     );
 
-    // Color detection for inline color previews
-    world.insert_resource(codelord_core::color::ColorCache::new());
-    world.insert_resource(codelord_core::color::ColorExtractor::new(
-      codelord_language::color::extract,
-    ));
-    world.insert_resource(codelord_core::color::ColorPickerState::default());
+    color::install(&mut world, codelord_language::color::extract);
+    statusbar::install(&mut world);
+    panel::install(&mut world);
+    audio::install(&mut world);
+    previews::install(&mut world);
 
-    // Statusbar resources
-    world.insert_resource(StatusbarResource::new());
-    world.insert_resource(LineColumnAnimation::new());
-
-    // Panel resources
-    world.insert_resource(LeftPanelResource::default());
-    world.insert_resource(RightPanelResource::default());
-    world.insert_resource(BottomPanelResource::default());
-    world.init_resource::<Messages<PanelCommand>>();
-
-    codelord_core::audio::install(&mut world);
-
-    // HTML Preview state resource (WebView stored outside ECS)
-    world.insert_resource(HtmlPreviewState::default());
-
-    // Markdown Preview state resource
-    world.insert_resource(MarkdownPreviewState::default());
-
-    // CSV Preview state resource
-    world.insert_resource(CsvPreviewState::default());
-
-    // PDF Preview state resource
-    world.insert_resource(PdfPreviewState::default());
-    world.insert_resource(PdfConnection::default());
-    world.insert_resource(PdfPageCache::default());
-    world.insert_resource(PdfTextCache::default());
-    world.insert_resource(PdfSelection::default());
-
-    // SQLite Preview state resource
-    world.insert_resource(SqlitePreviewState::new());
-    world.insert_resource(SqliteConnection::default());
-
-    // XLS Preview state resource
-    world.insert_resource(XlsPreviewState::default());
-
-    // Font Preview state resource
-    world.insert_resource(FontPreviewState::default());
-
-    // SVG Preview state resource
-    world.insert_resource(SvgPreviewState::default());
+    // SVG texture cache is non-Send so it lives outside the feature's install.
     world.insert_non_send_resource(SvgTextureCacheResource::default());
 
-    // Search state resource
-    world.insert_resource(SearchState::default());
-
-    // Popup resources
-    world.insert_resource(PopupResource::new());
-    world.init_resource::<Messages<PopupCommand>>();
-
-    // Tab order counter
-    world.insert_resource(TabOrderCounter::default());
-
-    // Zoom state
-    world.insert_resource(ZoomState::default());
-
-    // Drag and drop state
-    world.insert_resource(DragState::default());
-    world.insert_resource(DragAnimationState::default());
-
-    // Tab context target (for right-click menu)
-    world.insert_resource(TabContextTarget::default());
-
-    // Unsaved changes dialog
-    world.insert_resource(UnsavedChangesDialog::default());
-
-    // Keyboard focus
-    world.insert_resource(KeyboardFocus::new());
-
-    // XMB resources (for welcome screen)
-    world.insert_resource(XmbResource::new());
-    world.init_resource::<Messages<XmbCommand>>();
-
-    codelord_core::magic_zoom::install(&mut world);
-
-    // About resources
-    world.insert_resource(AboutResource::default());
-
-    // Settings resources
-    world.insert_resource(SettingsResource::default());
-
-    // Git resources
-    world.insert_resource(GitBlameSettings::default());
-    world.insert_resource(PendingBlameRequests::default());
-    world.insert_resource(GitBranchState::default());
-    world.insert_resource(PendingBranchRequests::default());
-
-    // Instructions resource (for empty editor state)
-    world.insert_resource(InstructionsResource::default());
-
-    // Toast resources
-    world.insert_resource(ToasterResource::default());
-    world.init_resource::<Messages<ToastCommand>>();
-    world.init_resource::<Messages<DismissToastCommand>>();
-
-    // Terminal resources
-    world.insert_resource(TerminalIdCounter::default());
-    world.insert_resource(TerminalTabOrderCounter::default());
-    world.insert_resource(TerminalRegistry::default());
-    world.insert_resource(TerminalBridges::default());
-
-    // Voice resources
-    world.insert_resource(VoiceResource::default());
-    world.insert_resource(VoiceModelState::default());
-    world.init_resource::<Messages<VoiceToggleCommand>>();
-    world.init_resource::<Messages<VoiceActionEvent>>();
-
-    codelord_core::filescope::install(&mut world);
-
-    // Codeshow (presenter) resources
-    world.insert_resource(codelord_core::codeshow::CodeshowState::default());
+    search::install(&mut world);
+    popup::install(&mut world);
+    tabbar::install(&mut world);
+    drag_and_drop::install(&mut world);
+    keyboard::install(&mut world);
+    xmb::install(&mut world);
+    magic_zoom::install(&mut world);
+    about::install(&mut world);
+    settings::install(&mut world);
+    git::install(&mut world);
+    instruction::install(&mut world);
+    toast::install(&mut world);
+    terminal::install(&mut world);
+    voice::install(&mut world);
+    filescope::install(&mut world);
+    codeshow::install(&mut world);
 
     // ========================================================================
     // Initialize Async Runtime & Voice System
@@ -690,199 +548,25 @@ impl Coder {
 
     let mut schedule = Schedule::default();
 
-    codelord_core::theme::register_systems(&mut schedule);
-
-    codelord_core::page::register_systems(&mut schedule);
-
-    codelord_core::magic_zoom::register_systems(&mut schedule);
-
-    // Navigation systems
-    schedule.add_systems((
-      navigation::systems::poll_folder_dialog_system,
-      navigation::systems::folder_selected_system,
-      navigation::systems::scan_directory_system,
-      navigation::systems::expand_folder_system,
-      navigation::systems::collapse_folder_system,
-      navigation::systems::update_breadcrumbs_system,
-      navigation::systems::create_file_system,
-      navigation::systems::create_folder_system,
-      navigation::systems::rename_system,
-      navigation::systems::delete_system,
-      navigation::systems::paste_system,
-      // Workspace multi-root systems
-      navigation::systems::add_folder_to_workspace_dialog_system,
-      navigation::systems::poll_workspace_folder_dialog_system,
-      navigation::systems::add_root_system,
-      navigation::systems::remove_root_system,
-      // Explorer header action systems
-      navigation::systems::refresh_explorer_system,
-      navigation::systems::collapse_all_folders_system,
-      navigation::systems::toggle_hidden_files_system,
-      // Explorer selection sync
-      navigation::systems::sync_explorer_selection_system,
-    ));
-
-    // Keyboard focus systems
-    schedule.add_systems((
-      keyboard::systems::focus_request_system,
-      keyboard::systems::clear_focus_system,
-    ));
-
-    // Text editor systems - process file/tab events and text editing
-    schedule.add_systems((
-      text_editor::systems::open_file_system,
-      text_editor::systems::new_editor_tab_system,
-      text_editor::systems::activate_tab_system,
-      text_editor::systems::insert_text_system,
-      text_editor::systems::delete_text_system,
-      text_editor::systems::move_cursor_system,
-      text_editor::systems::set_cursor_system,
-      text_editor::systems::save_file_system,
-      text_editor::systems::save_as_dialog_system,
-      text_editor::systems::poll_save_file_dialog_system,
-      text_editor::systems::toggle_fold_system,
-    ));
-
-    // Symbol extraction system - runs after text editing
-    schedule
-      .add_systems(codelord_core::symbol::systems::extract_symbols_system);
-
-    // Git systems
-    schedule.add_systems((
-      codelord_core::git::systems::sync_blame_settings_system,
-      codelord_core::git::systems::toggle_blame_system,
-      codelord_core::git::systems::fetch_blame_system,
-      codelord_core::git::systems::poll_blame_results_system,
-      codelord_core::git::systems::invalidate_blame_on_edit_system,
-      codelord_core::git::systems::detect_branch_system,
-      codelord_core::git::systems::poll_branch_results_system,
-      codelord_core::git::systems::check_dirty_status_system,
-      codelord_core::git::systems::poll_status_results_system,
-    ));
-
-    // Playground systems
-    schedule.add_systems((
-      playground::systems::new_playground_tab_system,
-      playground::systems::activate_playground_tab_system,
-    ));
-
-    // Statusbar systems
-    schedule.add_systems(line_column_animation_system);
-
-    // Tabbar systems
-    schedule.add_systems((
-      tabbar::systems::close_editor_tab_system,
-      tabbar::systems::close_terminal_tab_system,
-      tabbar::systems::close_playground_tab_system,
-      tabbar::systems::close_all_editor_tabs_system,
-      tabbar::systems::close_other_editor_tabs_system,
-      tabbar::systems::close_tabs_to_right_editor_system,
-      tabbar::systems::navigate_prev_editor_tab_system,
-      tabbar::systems::navigate_next_editor_tab_system,
-      tabbar::systems::navigate_prev_terminal_tab_system,
-      tabbar::systems::navigate_next_terminal_tab_system,
-      tabbar::systems::zoom_toggle_system,
-      tabbar::systems::zoom_animation_system,
-    ));
-
-    // Panel systems (preview toggles)
-    schedule.add_systems((
-      panel::systems::panel_command_system,
-      panel::systems::toggle_html_preview_system,
-      panel::systems::update_html_preview_on_tab_change,
-      panel::systems::toggle_markdown_preview_system,
-      panel::systems::update_markdown_preview_on_change,
-      panel::systems::update_markdown_preview_on_tab_change,
-      panel::systems::toggle_csv_preview_system,
-      panel::systems::update_csv_preview_on_change,
-      panel::systems::update_csv_preview_on_tab_change,
-      panel::systems::open_pdf_preview_system,
-      panel::systems::close_pdf_preview_system,
-      panel::systems::update_pdf_preview_on_tab_change,
-    ));
-
-    // SQLite preview systems
-    schedule.add_systems((
-      panel::systems::toggle_sqlite_preview_system,
-      panel::systems::update_sqlite_preview_on_tab_change,
-      panel::systems::select_sqlite_table_system,
-      panel::systems::change_sqlite_page_system,
-      panel::systems::execute_sqlite_sql_system,
-      panel::systems::export_sqlite_data_system,
-    ));
-
-    // XLS preview systems
-    schedule.add_systems((
-      panel::systems::select_xls_sheet_system,
-      panel::systems::change_xls_page_system,
-    ));
-
-    // SVG preview systems
-    schedule.add_systems((
-      panel::systems::svg_zoom_in_system,
-      panel::systems::svg_zoom_out_system,
-      panel::systems::svg_zoom_reset_system,
-    ));
-
-    // Search systems
-    schedule.add_systems((
-      panel::systems::toggle_search_system,
-      panel::systems::hcodelord_search_system,
-      panel::systems::update_search_query_system,
-      panel::systems::toggle_search_option_system,
-      panel::systems::find_next_system,
-      panel::systems::find_previous_system,
-      panel::systems::execute_search_system,
-    ));
-
-    // Popup systems
-    schedule.add_systems(popup::systems::popup_command_system);
-
-    // XMB systems (welcome screen navigation)
-    schedule.add_systems((
-      xmb::systems::xmb_command_system,
-      xmb::systems::xmb_action_system,
-    ));
-
-    // Terminal systems
-    schedule.add_systems((
-      terminal::systems::new_terminal_system,
-      terminal::systems::new_terminal_tab_system,
-      terminal::systems::close_terminal_system,
-      terminal::systems::activate_terminal_system,
-    ));
-
-    // Toast systems
-    schedule.add_systems((
-      toast::systems::process_toast_commands,
-      toast::systems::process_dismiss_commands,
-      toast::systems::update_toast_animations,
-    ));
-
-    // Voice systems
-    schedule.add_systems((
-      voice::systems::voice_toggle_system,
-      voice::systems::voice_animation_system,
-      voice::systems::voice_action_system,
-    ));
-
-    codelord_core::filescope::register_systems(&mut schedule);
-
-    // SQLite preview systems (poll results, dispatch queries, close connection)
-    #[cfg(not(target_arch = "wasm32"))]
-    schedule.add_systems((
-      poll_sqlite_results_system,
-      dispatch_sqlite_queries_system,
-      close_sqlite_connection_system,
-    ));
-
-    // PDF preview systems (poll results, dispatch queries, close connection)
-    #[cfg(not(target_arch = "wasm32"))]
-    schedule.add_systems((
-      poll_pdf_results_system,
-      dispatch_pdf_queries_system,
-      close_pdf_connection_system,
-    ));
+    theme::register_systems(&mut schedule);
+    page::register_systems(&mut schedule);
+    magic_zoom::register_systems(&mut schedule);
+    navigation::register_systems(&mut schedule);
+    keyboard::register_systems(&mut schedule);
+    text_editor::register_systems(&mut schedule);
+    symbol::register_systems(&mut schedule);
+    git::register_systems(&mut schedule);
+    playground::register_systems(&mut schedule);
+    statusbar::register_systems(&mut schedule);
+    tabbar::register_systems(&mut schedule);
+    panel::register_systems(&mut schedule);
+    popup::register_systems(&mut schedule);
+    xmb::register_systems(&mut schedule);
+    terminal::register_systems(&mut schedule);
+    toast::register_systems(&mut schedule);
+    voice::register_systems(&mut schedule);
+    filescope::register_systems(&mut schedule);
+    previews::register_systems(&mut schedule);
 
     // ========================================================================
     // Apply Initial Theme
@@ -1461,7 +1145,7 @@ impl eframe::App for Coder {
     // Codeshow (Presenter) Message Handling
     // ========================================================================
     {
-      use codelord_core::codeshow::{
+      use codeshow::{
         CodeshowState, NavigateSlide, PendingPresentationDirectory,
         PendingPresentationFile, SlideDirection,
       };
@@ -2075,7 +1759,7 @@ impl Coder {
           .fill(ctx.global_style().visuals.window_fill)
           .inner_margin(egui::Margin::symmetric(8, 0)),
       )
-      .show_inside(ui, |ui| statusbar::show(ui, &mut self.world));
+      .show_inside(ui, |ui| statusbar_view::show(ui, &mut self.world));
 
     // Music player panel (above statusbar).
     // Get animated height for playlist expansion.
@@ -2284,12 +1968,13 @@ impl Coder {
 
     // Save file: Cmd+S
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::S)) {
-      use codelord_core::ecs::query::With;
+      use ecs::query::With;
 
       // Find active editor tab and spawn save request.
       let active_editor = self
         .world
-        .query_filtered::<codelord_core::ecs::entity::Entity, (With<EditorTab>, With<Active>)>()
+        .query_filtered::<ecs::entity::Entity, (With<EditorTab>, With<Active>)>(
+        )
         .iter(&self.world)
         .next();
 
@@ -2524,7 +2209,7 @@ impl Coder {
           // Find and activate next tab
           let next_entity: Option<bevy_ecs::entity::Entity> = self
             .world
-            .query_filtered::<(bevy_ecs::entity::Entity, &Tab), bevy_ecs::prelude::With<codelord_core::tabbar::EditorTab>>()
+            .query_filtered::<(bevy_ecs::entity::Entity, &Tab), bevy_ecs::prelude::With<tabbar::EditorTab>>()
             .iter(&self.world)
             .filter(|(e, _)| *e != entity)
             .min_by_key(|(_, t)| {
@@ -2711,8 +2396,8 @@ impl Coder {
           SonarAnimation::default(),
           buffer,
           Cursor::new(tab_state.cursor_position.min(content.len())),
-          codelord_core::symbol::TabSymbols::new(),
-          codelord_core::git::components::TabBlame::new(),
+          symbol::TabSymbols::new(),
+          git::components::TabBlame::new(),
           Focusable,
           KeyboardHandler::text_editor(),
         ));
@@ -2831,20 +2516,20 @@ impl Coder {
 
   /// Reset the app to a fresh state (clear all tabs, explorer, etc.)
   fn reset_to_fresh_state(&mut self) {
-    use codelord_core::ecs::query::With;
-    use codelord_core::navigation::components::FileEntry;
+    use ecs::query::With;
+    use navigation::components::FileEntry;
 
     // Collect all editor tab entities to despawn
-    let editor_tabs: Vec<codelord_core::ecs::entity::Entity> = self
+    let editor_tabs: Vec<ecs::entity::Entity> = self
       .world
-      .query_filtered::<codelord_core::ecs::entity::Entity, With<EditorTab>>()
+      .query_filtered::<ecs::entity::Entity, With<EditorTab>>()
       .iter(&self.world)
       .collect();
 
     // Collect all file entries (explorer items) to despawn
-    let file_entries: Vec<codelord_core::ecs::entity::Entity> = self
+    let file_entries: Vec<ecs::entity::Entity> = self
       .world
-      .query_filtered::<codelord_core::ecs::entity::Entity, With<FileEntry>>()
+      .query_filtered::<ecs::entity::Entity, With<FileEntry>>()
       .iter(&self.world)
       .collect();
 
