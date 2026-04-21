@@ -1423,6 +1423,7 @@ dependencies = [
  "ropey",
  "rust-i18n",
  "rustc-hash 2.1.1",
+ "serde",
  "sonic-rs",
  "swisskit",
  "sysinfo",

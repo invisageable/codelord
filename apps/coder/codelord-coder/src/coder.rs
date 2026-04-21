@@ -24,9 +24,8 @@ use codelord_core::ecs::world::World;
 use codelord_core::events::{
   CenterWindowRequest, ClearSessionRequest, CompileRequest,
   NavigateNextTabRequest, NavigatePrevTabRequest, OpenFileRequest,
-  OpenPdfPreviewRequest, PositionWindowLeftHalfRequest,
-  PositionWindowRightHalfRequest, SaveFileRequest, ShakeWindowRequest,
-  ToggleBlameRequest, ToggleSearchRequest,
+  PositionWindowLeftHalfRequest, PositionWindowRightHalfRequest,
+  SaveFileRequest, ShakeWindowRequest, ToggleBlameRequest, ToggleSearchRequest,
 };
 use codelord_core::filescope::resources::{
   FilescopeMode, FilescopeResponse, FilescopeState,
@@ -34,9 +33,7 @@ use codelord_core::filescope::resources::{
 use codelord_core::keyboard::{Focusable, KeyboardHandler};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
 use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
-use codelord_core::navigation::resources::{
-  ActiveWorkspaceRoot, ExplorerState,
-};
+use codelord_core::navigation::resources::ExplorerState;
 use codelord_core::page::components::Page;
 use codelord_core::page::resources::PageResource;
 use codelord_core::panel::resources::{
@@ -47,9 +44,8 @@ use codelord_core::playground::{
 };
 use codelord_core::previews::sqlite::SqliteQuery;
 use codelord_core::previews::{
-  DEFAULT_PREVIEW_URL, FontPreviewState, HtmlPreviewState, PdfConnection,
-  PdfPreviewState, SqliteConnection, SqlitePreviewState, SvgPreviewState,
-  XlsPreviewState,
+  DEFAULT_PREVIEW_URL, HtmlPreviewState, PdfConnection, PdfPreviewState,
+  SqliteConnection, SqlitePreviewState,
 };
 use codelord_core::search::SearchState;
 use codelord_core::tabbar::components::EditorTab;
@@ -57,12 +53,8 @@ use codelord_core::tabbar::components::{PlaygroundTab, SonarAnimation, Tab};
 use codelord_core::tabbar::{
   TabOrderCounter, UnsavedChangesDialog, UnsavedChangesResponse,
 };
-use codelord_core::text_editor::components::FileTab;
 use codelord_core::text_editor::components::{Cursor, TextBuffer};
-use codelord_core::theme::components::ThemeKind;
-use codelord_core::theme::resources::{
-  ThemeAction, ThemeCommand, ThemeResource,
-};
+use codelord_core::theme::resources::{ThemeAction, ThemeCommand};
 use codelord_core::toast::components::ToastAction;
 use codelord_core::toast::resources::{DismissToastCommand, ToastCommand};
 use codelord_core::ui::component::Active;
@@ -1960,7 +1952,6 @@ impl Coder {
   ) -> bool {
     let Some(storage) = cc.storage else {
       log::debug!("[Session] No storage available");
-
       return false;
     };
 
@@ -1972,149 +1963,7 @@ impl Coder {
       return false;
     };
 
-    log::info!(
-      "[Session] Restoring: {} tabs, theme: {}, roots: {}",
-      session.tabs.len(),
-      session.theme.kind,
-      session.explorer.roots.len()
-    );
-
-    // Restore theme
-    if let Some(mut theme_res) = world.get_resource_mut::<ThemeResource>() {
-      theme_res.current = match session.theme.kind.as_str() {
-        "light" => ThemeKind::Light,
-        "custom" => ThemeKind::Custom,
-        _ => ThemeKind::Dark,
-      }
-    }
-
-    // Restore panel visibility
-    if let Some(mut left) = world.get_resource_mut::<LeftPanelResource>() {
-      left.is_visible = session.panels.left_visible;
-    }
-
-    if let Some(mut right) = world.get_resource_mut::<RightPanelResource>() {
-      right.is_visible = session.panels.right_visible;
-    }
-
-    if let Some(mut bottom) = world.get_resource_mut::<BottomPanelResource>() {
-      bottom.is_visible = session.panels.bottom_visible;
-    }
-
-    // Restore explorer roots (triggers directory scan via systems)
-    if !session.explorer.roots.is_empty() {
-      if let Some(mut explorer) = world.get_resource_mut::<ExplorerState>() {
-        explorer.roots = session.explorer.roots.clone();
-      }
-
-      // Set active workspace to first root
-      if let Some(first_root) = session.explorer.roots.first()
-        && let Some(mut active_ws) =
-          world.get_resource_mut::<ActiveWorkspaceRoot>()
-      {
-        active_ws.path = Some(first_root.clone());
-
-        active_ws.name = first_root
-          .file_name()
-          .map(|n| n.to_string_lossy().to_string());
-      }
-    }
-
-    // Restore tabs
-    if session.tabs.is_empty() {
-      return false;
-    }
-
-    session
-      .tabs
-      .iter()
-      .enumerate()
-      .for_each(|(idx, tab_state)| {
-        let order = world
-          .get_resource_mut::<TabOrderCounter>()
-          .map(|mut counter| counter.next())
-          .unwrap_or(idx as u32);
-
-        // Determine content: reload from disk if file exists and not dirty,
-        // otherwise use saved content (for unsaved changes or new files).
-        let content = if !tab_state.is_dirty {
-          tab_state
-            .path
-            .as_ref()
-            .and_then(|p| std::fs::read_to_string(p).ok())
-            .unwrap_or_else(|| tab_state.content.clone())
-        } else {
-          tab_state.content.clone()
-        };
-
-        let mut buffer = TextBuffer::new(&content);
-        buffer.modified = tab_state.is_dirty;
-
-        let mut entity = world.spawn((
-          Tab::new(&tab_state.title, order),
-          EditorTab,
-          SonarAnimation::default(),
-          buffer,
-          Cursor::new(tab_state.cursor_position.min(content.len())),
-          symbol::TabSymbols::new(),
-          git::components::TabBlame::new(),
-          Focusable,
-          KeyboardHandler::text_editor(),
-        ));
-
-        // Add FileTab if path exists
-        tab_state
-          .path
-          .as_ref()
-          .map(|path| entity.insert(FileTab::new(path.clone())));
-
-        // Mark as active if this was the active tab
-        (session.active_tab_index == Some(idx)).then(|| entity.insert(Active));
-      });
-
-    // Auto-enable preview if active tab is a binary file (SQLite, PDF, or XLS)
-    // Spawn ECS requests to handle preview activation
-    if let Some(active_idx) = session.active_tab_index
-      && let Some(tab_state) = session.tabs.get(active_idx)
-      && let Some(path) = &tab_state.path
-    {
-      if previews::sqlite::accepts(path) {
-        if let Some(mut sqlite_preview) =
-          world.get_resource_mut::<SqlitePreviewState>()
-        {
-          sqlite_preview.enabled = true;
-          sqlite_preview.current_file = Some(path.clone());
-          sqlite_preview.needs_reload = true;
-        }
-      } else if previews::pdf::accepts(path) {
-        world.spawn(OpenPdfPreviewRequest(path.clone()));
-      } else if previews::xls::accepts(path) {
-        if let Some(mut xls_preview) =
-          world.get_resource_mut::<XlsPreviewState>()
-        {
-          xls_preview.open(path.clone());
-        }
-      } else if previews::font::accepts(path) {
-        if let Some(mut font_preview) =
-          world.get_resource_mut::<FontPreviewState>()
-        {
-          font_preview.open(path);
-        }
-      } else if previews::svg::accepts(path)
-        && let Some(mut svg_preview) =
-          world.get_resource_mut::<SvgPreviewState>()
-      {
-        svg_preview.open(path);
-      }
-    }
-
-    log::info!(
-      "[Session] Restored {} tabs, active: {:?}",
-      session.tabs.len(),
-      session.active_tab_index
-    );
-
-    true
+    session.apply_to_world(world)
   }
 
   /// Reset the app to a fresh state (clear all tabs, explorer, etc.)
