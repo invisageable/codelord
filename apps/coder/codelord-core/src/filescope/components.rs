@@ -3,11 +3,11 @@ use bevy_ecs::component::Component;
 use std::ops::Range;
 use std::path::PathBuf;
 
-/// Unique identifier for file picker instances.
+/// Unique identifier for filescope instances.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FilePickerId(pub usize);
+pub struct FilescopeId(pub usize);
 
-impl FilePickerId {
+impl FilescopeId {
   pub fn new() -> Self {
     static COUNTER: std::sync::atomic::AtomicUsize =
       std::sync::atomic::AtomicUsize::new(0);
@@ -15,15 +15,15 @@ impl FilePickerId {
   }
 }
 
-impl Default for FilePickerId {
+impl Default for FilescopeId {
   fn default() -> Self {
     Self::new()
   }
 }
 
-/// File picker item for display in the list.
+/// Filescope item for display in the list.
 #[derive(Debug, Clone)]
-pub struct FilePickerItem {
+pub struct FilescopeItem {
   /// File path.
   pub path: PathBuf,
   /// Display name (filename only).
@@ -34,7 +34,7 @@ pub struct FilePickerItem {
   pub is_dir: bool,
 }
 
-impl FilePickerItem {
+impl FilescopeItem {
   pub fn new(path: PathBuf) -> Self {
     Self::new_with_root(path, None)
   }

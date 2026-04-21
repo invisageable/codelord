@@ -55,8 +55,8 @@ use codelord_core::tabbar::components::EditorTab;
 
 use codelord_core::about::resources::AboutResource;
 use codelord_core::animation::resources::ShakeAnimation;
-use codelord_core::file_picker::resources::{
-  FilePickerMatcher, FilePickerMode, FilePickerResponse, FilePickerState,
+use codelord_core::filescope::resources::{
+  FilescopeMatcher, FilescopeMode, FilescopeResponse, FilescopeState,
 };
 use codelord_core::git::resources::{
   GitBlameSettings, GitBranchState, PendingBlameRequests, PendingBranchRequests,
@@ -484,9 +484,9 @@ impl Coder {
     world.init_resource::<Messages<VoiceToggleCommand>>();
     world.init_resource::<Messages<VoiceActionEvent>>();
 
-    // File picker resources
-    world.insert_resource(FilePickerState::default());
-    world.insert_resource(FilePickerMatcher::new());
+    // Filescope resources
+    world.insert_resource(FilescopeState::default());
+    world.insert_resource(FilescopeMatcher::new());
 
     // Codeshow (presenter) resources
     world.insert_resource(codelord_core::codeshow::CodeshowState::default());
@@ -911,10 +911,10 @@ impl Coder {
       voice::systems::voice_action_system,
     ));
 
-    // File picker systems
+    // Filescope systems
     schedule.add_systems((
-      codelord_core::file_picker::systems::file_picker_populate_system,
-      codelord_core::file_picker::systems::file_picker_tick_system,
+      codelord_core::filescope::systems::filescope_populate_system,
+      codelord_core::filescope::systems::filescope_tick_system,
     ));
 
     // SQLite preview systems (poll results, dispatch queries, close connection)
@@ -1029,7 +1029,7 @@ impl Coder {
   }
 
   /// Propagate the magic-zoom transform to every visible layer except our
-  /// own (already transformed in `fn ui`). Overlays — file picker, popups,
+  /// own (already transformed in `fn ui`). Overlays — filescope, popups,
   /// dialogs, toasts — render via `egui::Area` outside the `scope_builder`
   /// wrap, so without this they'd stay at 1x while the main body zooms.
   ///
@@ -2245,11 +2245,10 @@ impl Coder {
 
     overlays::popup::show(&ctx, &mut self.world);
 
-    // Render file picker overlay
-    let file_picker_response =
-      overlays::file_picker::show(&ctx, &mut self.world);
+    // Render filescope overlay
+    let filescope_response = overlays::filescope::show(&ctx, &mut self.world);
 
-    self.handle_file_picker_response(file_picker_response);
+    self.handle_filescope_response(filescope_response);
 
     // Render unsaved changes dialog
     let unsaved_response =
@@ -2342,12 +2341,12 @@ impl Coder {
       self.world.spawn(ToggleBlameRequest);
     }
 
-    // File picker: Cmd+P (Quick Open)
+    // Filescope: Cmd+P (Quick Open)
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::P)) {
       self
         .world
-        .resource_mut::<FilePickerState>()
-        .toggle(FilePickerMode::Files);
+        .resource_mut::<FilescopeState>()
+        .toggle(FilescopeMode::Files);
     }
 
     // Music player: Cmd+M
@@ -2508,17 +2507,17 @@ impl Coder {
     }
   }
 
-  /// Handle response from file picker.
-  fn handle_file_picker_response(&mut self, response: FilePickerResponse) {
+  /// Handle response from filescope.
+  fn handle_filescope_response(&mut self, response: FilescopeResponse) {
     match response {
-      FilePickerResponse::Select(path, _action) => {
+      FilescopeResponse::Select(path, _action) => {
         self.world.spawn(OpenFileRequest::new(path));
-        self.world.resource_mut::<FilePickerState>().hide();
+        self.world.resource_mut::<FilescopeState>().hide();
       }
-      FilePickerResponse::Close => {
-        self.world.resource_mut::<FilePickerState>().hide();
+      FilescopeResponse::Close => {
+        self.world.resource_mut::<FilescopeState>().hide();
       }
-      FilePickerResponse::None => {}
+      FilescopeResponse::None => {}
     }
   }
 

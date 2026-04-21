@@ -646,56 +646,56 @@ impl CloseTabsToRightRequest {
 
 /// Event: request to show file picker.
 #[derive(Component, Debug, Clone, Copy, Default)]
-pub struct ShowFilePickerRequest {
-  pub mode: crate::file_picker::resources::FilePickerMode,
+pub struct ShowFilescopeRequest {
+  pub mode: crate::filescope::resources::FilescopeMode,
 }
 
-impl ShowFilePickerRequest {
+impl ShowFilescopeRequest {
   pub fn files() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Files,
+      mode: crate::filescope::resources::FilescopeMode::Files,
     }
   }
 
   pub fn recent() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Recent,
+      mode: crate::filescope::resources::FilescopeMode::Recent,
     }
   }
 
   pub fn symbols() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Symbols,
+      mode: crate::filescope::resources::FilescopeMode::Symbols,
     }
   }
 
   pub fn buffers() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Buffers,
+      mode: crate::filescope::resources::FilescopeMode::Buffers,
     }
   }
 
   pub fn commands() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Commands,
+      mode: crate::filescope::resources::FilescopeMode::Commands,
     }
   }
 }
 
 /// Event: request to hide file picker.
 #[derive(Component, Debug, Clone, Copy, Default)]
-pub struct HideFilePickerRequest;
+pub struct HideFilescopeRequest;
 
 /// Event: request to toggle file picker.
 #[derive(Component, Debug, Clone, Copy, Default)]
-pub struct ToggleFilePickerRequest {
-  pub mode: crate::file_picker::resources::FilePickerMode,
+pub struct ToggleFilescopeRequest {
+  pub mode: crate::filescope::resources::FilescopeMode,
 }
 
-impl ToggleFilePickerRequest {
+impl ToggleFilescopeRequest {
   pub fn files() -> Self {
     Self {
-      mode: crate::file_picker::resources::FilePickerMode::Files,
+      mode: crate::filescope::resources::FilescopeMode::Files,
     }
   }
 }

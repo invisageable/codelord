@@ -45,7 +45,7 @@ organisms/   # titlebar, statusbar
 pages/       # text editor, terminal, settings, welcome
 panels/      # explorer, search, music player
 views/       # copilord chat, editor content
-overlays/    # file picker, popups, toasts
+overlays/    # filescope, popups, toasts
 ```
 
 ### Data Flow
@@ -109,7 +109,7 @@ just ci             # Full CI simulation (includes Linux Docker)
 - **Animation**: Spring physics, tweening, glow, shimmer (`codelord-core/src/animation/`)
 - **Voice**: 32+ commands, Whisper local, regex offline fallback (`codelord-voice/`, `codelord-core/src/voice/`)
 - **Theme**: Hot-reload, multiple themes (`codelord-core/src/theme/`)
-- **File picker**: Fuzzy search via `nucleo` (`codelord-core/src/file_picker/`)
+- **Filescope**: Fuzzy search via `nucleo` (`codelord-core/src/filescope/`)
 - **XMB navigation**: PlayStation-style menu system (`codelord-core/src/xmb/`)
 - **Drag-and-drop**: With animation (`codelord-core/src/drag_and_drop/`)
 - **Terminal**: Alacritty-based with custom cursor animation (`codelord-components/src/components/pages/terminal/`)

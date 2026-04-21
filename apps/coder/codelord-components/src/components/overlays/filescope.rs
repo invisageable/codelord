@@ -6,9 +6,9 @@ use crate::components::structure::divider::Axis;
 use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::ActiveAnimations;
 use codelord_core::ecs::world::World;
-use codelord_core::file_picker::components::{CachedPreview, SelectAction};
-use codelord_core::file_picker::resources::{
-  FilePickerMatcher, FilePickerResponse, FilePickerState, RowPaddingAnim,
+use codelord_core::filescope::components::{CachedPreview, SelectAction};
+use codelord_core::filescope::resources::{
+  FilescopeMatcher, FilescopeResponse, FilescopeState, RowPaddingAnim,
   load_preview,
 };
 use codelord_core::icon::components::{Arrow, Icon};
@@ -43,14 +43,14 @@ fn relative_display_path(path: &Path, root_paths: &[PathBuf]) -> String {
   path.display().to_string()
 }
 
-/// Renders the file picker overlay.
+/// Renders the filescope overlay.
 /// Returns a response indicating what action to take.
-pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
-  let mut response = FilePickerResponse::None;
+pub fn show(ctx: &egui::Context, world: &mut World) -> FilescopeResponse {
+  let mut response = FilescopeResponse::None;
 
   // Get state.
   let (is_visible, _show_preview, animation_start) = {
-    let state = world.resource::<FilePickerState>();
+    let state = world.resource::<FilescopeState>();
     (state.visible, state.show_preview, state.animation_start)
   };
 
@@ -62,8 +62,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
 
   // Initialize animation start time.
   let animation_start = animation_start.unwrap_or_else(|| {
-    world.resource_mut::<FilePickerState>().animation_start =
-      Some(current_time);
+    world.resource_mut::<FilescopeState>().animation_start = Some(current_time);
 
     current_time
   });
@@ -84,7 +83,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
   let screen_rect = ctx.input(|i| i.content_rect());
 
   // Full-screen semi-transparent overlay.
-  egui::Area::new(egui::Id::new("file_picker_overlay"))
+  egui::Area::new(egui::Id::new("filescope_overlay"))
     .fixed_pos(egui::pos2(0.0, 0.0))
     .order(egui::Order::Foreground)
     .show(ctx, |ui| {
@@ -101,7 +100,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
         ui.allocate_rect(screen_rect, egui::Sense::click());
 
       if overlay_response.clicked() {
-        response = FilePickerResponse::Close;
+        response = FilescopeResponse::Close;
       }
     });
 
@@ -111,7 +110,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
   let dialog_width = dialog_rect.width();
   let dialog_height = dialog_rect.height();
 
-  egui::Area::new(egui::Id::new("file_picker_dialog"))
+  egui::Area::new(egui::Id::new("filescope_dialog"))
     .fixed_pos(dialog_rect.min)
     .order(egui::Order::Tooltip)
     .show(ctx, |ui| {
@@ -137,7 +136,7 @@ pub fn show(ctx: &egui::Context, world: &mut World) -> FilePickerResponse {
           let input_response = render_search_input(ui, world, dialog_width);
 
           if let Some(new_query) = input_response.query_changed {
-            world.resource_mut::<FilePickerState>().set_query(new_query);
+            world.resource_mut::<FilescopeState>().set_query(new_query);
           }
 
           ui.separator();
@@ -230,7 +229,7 @@ fn render_search_input(
   };
 
   let mut search_input =
-    world.resource::<FilePickerState>().search_input.clone();
+    world.resource::<FilescopeState>().search_input.clone();
 
   // Get delta time for animation.
   let dt = world
@@ -259,13 +258,13 @@ fn render_search_input(
     });
 
     // Match count.
-    if let Some(matcher) = world.resource::<FilePickerMatcher>().get() {
+    if let Some(matcher) = world.resource::<FilescopeMatcher>().get() {
       let count = matcher.matched_count() as f64;
       let total = matcher.total_count();
 
       // Update animation target and tick.
       let (animated_count, is_animating) = {
-        let mut state = world.resource_mut::<FilePickerState>();
+        let mut state = world.resource_mut::<FilescopeState>();
 
         // Set target if count changed.
         if (state.match_count_anim.target - count).abs() > 0.5 {
@@ -309,9 +308,9 @@ fn render_file_list(
   ui: &mut egui::Ui,
   world: &mut World,
   theme: &Theme,
-) -> Option<FilePickerResponse> {
-  let selection = world.resource::<FilePickerState>().selection;
-  let prev_selection = world.resource::<FilePickerState>().prev_selection;
+) -> Option<FilescopeResponse> {
+  let selection = world.resource::<FilescopeState>().selection;
+  let prev_selection = world.resource::<FilescopeState>().prev_selection;
 
   // Get delta time for animations.
   let dt = world
@@ -320,12 +319,12 @@ fn render_file_list(
     .unwrap_or(0.016);
 
   // Tick matcher.
-  if let Some(matcher) = world.resource_mut::<FilePickerMatcher>().get_mut() {
+  if let Some(matcher) = world.resource_mut::<FilescopeMatcher>().get_mut() {
     matcher.tick();
   }
 
   let matched_count = world
-    .resource::<FilePickerMatcher>()
+    .resource::<FilescopeMatcher>()
     .get()
     .map(|m| m.matched_count())
     .unwrap_or(0);
@@ -344,7 +343,7 @@ fn render_file_list(
 
   // Handle selection change - update animations.
   if prev_selection != Some(selection) {
-    let mut state = world.resource_mut::<FilePickerState>();
+    let mut state = world.resource_mut::<FilescopeState>();
 
     // Deselect previous row.
     if let Some(prev) = prev_selection {
@@ -368,7 +367,7 @@ fn render_file_list(
   // Update all row animations and track if any are active.
   let mut any_animating = false;
   {
-    let mut state = world.resource_mut::<FilePickerState>();
+    let mut state = world.resource_mut::<FilescopeState>();
 
     for anim in state.row_padding_anims.values_mut() {
       if anim.update(dt) {
@@ -387,7 +386,7 @@ fn render_file_list(
   // Get padding values for visible rows.
   let get_row_padding = |idx: usize| -> f32 {
     world
-      .resource::<FilePickerState>()
+      .resource::<FilescopeState>()
       .row_padding_anims
       .get(&idx)
       .map(|a| a.value())
@@ -409,11 +408,11 @@ fn render_file_list(
   let hover_fg = visuals.widgets.active.weak_bg_fill;
 
   // Use RefCell to communicate response out of closures.
-  let response: RefCell<Option<FilePickerResponse>> = RefCell::new(None);
+  let response: RefCell<Option<FilescopeResponse>> = RefCell::new(None);
   let clicked_idx: RefCell<Option<usize>> = RefCell::new(None);
 
   TableBuilder::new(ui)
-    .id_salt("file_picker_table")
+    .id_salt("filescope_table")
     .striped(false)
     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
     .column(Column::remainder())
@@ -427,7 +426,7 @@ fn render_file_list(
 
         // Get item before col() to avoid borrow issues.
         let item = world
-          .resource::<FilePickerMatcher>()
+          .resource::<FilescopeMatcher>()
           .get()
           .and_then(|m| m.get(idx).cloned());
 
@@ -525,7 +524,7 @@ fn render_file_list(
           }
 
           if resp.double_clicked() {
-            *response.borrow_mut() = Some(FilePickerResponse::Select(
+            *response.borrow_mut() = Some(FilescopeResponse::Select(
               item.path.clone(),
               SelectAction::Replace,
             ));
@@ -536,7 +535,7 @@ fn render_file_list(
 
   // Update selection if clicked.
   if let Some(idx) = clicked_idx.borrow().as_ref() {
-    world.resource_mut::<FilePickerState>().selection = *idx;
+    world.resource_mut::<FilescopeState>().selection = *idx;
   }
 
   response.borrow_mut().take()
@@ -544,11 +543,11 @@ fn render_file_list(
 
 /// Render the preview panel.
 fn render_preview(ui: &mut egui::Ui, world: &mut World, theme: &Theme) {
-  let selection = world.resource::<FilePickerState>().selection;
+  let selection = world.resource::<FilescopeState>().selection;
 
   // Get selected item's path.
   let selected_path: Option<PathBuf> = world
-    .resource::<FilePickerMatcher>()
+    .resource::<FilescopeMatcher>()
     .get()
     .and_then(|m| m.get(selection))
     .map(|item| item.path.clone());
@@ -567,7 +566,7 @@ fn render_preview(ui: &mut egui::Ui, world: &mut World, theme: &Theme) {
 
   // Load or get cached preview.
   let preview = {
-    let state = world.resource::<FilePickerState>();
+    let state = world.resource::<FilescopeState>();
 
     state.get_preview(&path).cloned()
   };
@@ -576,7 +575,7 @@ fn render_preview(ui: &mut egui::Ui, world: &mut World, theme: &Theme) {
     let loaded = load_preview(&path);
 
     world
-      .resource_mut::<FilePickerState>()
+      .resource_mut::<FilescopeState>()
       .cache_preview(path.clone(), loaded.clone());
 
     loaded
@@ -611,7 +610,7 @@ fn render_preview(ui: &mut egui::Ui, world: &mut World, theme: &Theme) {
 
       // Update animation target and tick.
       let (animated_count, is_animating) = {
-        let mut state = world.resource_mut::<FilePickerState>();
+        let mut state = world.resource_mut::<FilescopeState>();
 
         // Set target if line count changed.
         if (state.line_count_anim.target - line_count).abs() > 0.5 {
@@ -731,7 +730,7 @@ fn render_document_preview(
   let font_id = egui::FontId::monospace(11.0);
 
   egui::ScrollArea::both()
-    .id_salt("file_picker_document_preview")
+    .id_salt("filescope_document_preview")
     .auto_shrink([false, false])
     .show_rows(ui, row_height, lines.len().min(500), |ui, range| {
       ui.set_min_width(available_width);
@@ -867,11 +866,11 @@ fn build_highlighted_galley(
 /// Render directory preview.
 fn render_directory_preview(
   ui: &mut egui::Ui,
-  entries: &[codelord_core::file_picker::components::DirEntry],
+  entries: &[codelord_core::filescope::components::DirEntry],
   theme: &Theme,
 ) {
   egui::ScrollArea::vertical()
-    .id_salt("file_picker_directory_preview")
+    .id_salt("filescope_directory_preview")
     .auto_shrink([false, false])
     .show(ui, |ui| {
       for entry in entries.iter().take(100) {
@@ -911,7 +910,7 @@ fn render_directory_preview(
 fn handle_keyboard(
   ctx: &egui::Context,
   world: &mut World,
-) -> Option<FilePickerResponse> {
+) -> Option<FilescopeResponse> {
   let mut response = None;
 
   ctx.input(|i| {
@@ -927,68 +926,68 @@ fn handle_keyboard(
           // Navigation.
           (egui::Key::ArrowUp, false, _) | (egui::Key::P, true, _) => {
             let count = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .map(|m| m.matched_count())
               .unwrap_or(0);
 
             world
-              .resource_mut::<FilePickerState>()
+              .resource_mut::<FilescopeState>()
               .move_selection(-1, count);
           }
           (egui::Key::ArrowDown, false, _) | (egui::Key::N, true, _) => {
             let count = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .map(|m| m.matched_count())
               .unwrap_or(0);
 
             world
-              .resource_mut::<FilePickerState>()
+              .resource_mut::<FilescopeState>()
               .move_selection(1, count);
           }
           (egui::Key::PageUp, _, _) | (egui::Key::U, true, _) => {
             let count = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .map(|m| m.matched_count())
               .unwrap_or(0);
 
-            world.resource_mut::<FilePickerState>().page_up(count);
+            world.resource_mut::<FilescopeState>().page_up(count);
           }
           (egui::Key::PageDown, _, _) | (egui::Key::D, true, _) => {
             let count = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .map(|m| m.matched_count())
               .unwrap_or(0);
 
-            world.resource_mut::<FilePickerState>().page_down(count);
+            world.resource_mut::<FilescopeState>().page_down(count);
           }
           (egui::Key::Home, _, _) => {
-            world.resource_mut::<FilePickerState>().selection = 0;
+            world.resource_mut::<FilescopeState>().selection = 0;
           }
           (egui::Key::End, _, _) => {
             let count = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .map(|m| m.matched_count())
               .unwrap_or(0);
 
-            world.resource_mut::<FilePickerState>().selection =
+            world.resource_mut::<FilescopeState>().selection =
               count.saturating_sub(1);
           }
 
           // Selection.
           (egui::Key::Enter, false, false) => {
-            let selection = world.resource::<FilePickerState>().selection;
+            let selection = world.resource::<FilescopeState>().selection;
 
             if let Some(item) = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .and_then(|m| m.get(selection))
             {
-              response = Some(FilePickerResponse::Select(
+              response = Some(FilescopeResponse::Select(
                 item.path.clone(),
                 SelectAction::Replace,
               ));
@@ -996,14 +995,14 @@ fn handle_keyboard(
           }
           (egui::Key::Enter, false, true) => {
             // Shift+Enter: open in new tab.
-            let selection = world.resource::<FilePickerState>().selection;
+            let selection = world.resource::<FilescopeState>().selection;
 
             if let Some(item) = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .and_then(|m| m.get(selection))
             {
-              response = Some(FilePickerResponse::Select(
+              response = Some(FilescopeResponse::Select(
                 item.path.clone(),
                 SelectAction::NewTab,
               ));
@@ -1012,28 +1011,28 @@ fn handle_keyboard(
 
           // Split actions.
           (egui::Key::S, true, _) => {
-            let selection = world.resource::<FilePickerState>().selection;
+            let selection = world.resource::<FilescopeState>().selection;
 
             if let Some(item) = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .and_then(|m| m.get(selection))
             {
-              response = Some(FilePickerResponse::Select(
+              response = Some(FilescopeResponse::Select(
                 item.path.clone(),
                 SelectAction::HSplit,
               ));
             }
           }
           (egui::Key::V, true, _) => {
-            let selection = world.resource::<FilePickerState>().selection;
+            let selection = world.resource::<FilescopeState>().selection;
 
             if let Some(item) = world
-              .resource::<FilePickerMatcher>()
+              .resource::<FilescopeMatcher>()
               .get()
               .and_then(|m| m.get(selection))
             {
-              response = Some(FilePickerResponse::Select(
+              response = Some(FilescopeResponse::Select(
                 item.path.clone(),
                 SelectAction::VSplit,
               ));
@@ -1042,14 +1041,14 @@ fn handle_keyboard(
 
           // Toggle preview.
           (egui::Key::T, true, _) => {
-            let mut state = world.resource_mut::<FilePickerState>();
+            let mut state = world.resource_mut::<FilescopeState>();
 
             state.show_preview = !state.show_preview;
           }
 
           // Close.
           (egui::Key::Escape, _, _) => {
-            response = Some(FilePickerResponse::Close);
+            response = Some(FilescopeResponse::Close);
           }
 
           _ => {}

@@ -9,7 +9,7 @@ pub mod color;
 pub mod dialog;
 pub mod drag_and_drop;
 pub mod events;
-pub mod file_picker;
+pub mod filescope;
 pub mod git;
 pub mod icon;
 pub mod instruction;
