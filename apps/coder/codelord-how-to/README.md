@@ -1,4 +1,6 @@
-# Codelord How-To
+# codelord — how-to.
+
+> *...*
 
 Learn codelord in 10 short guides. Each one has a GIF showing
 the action — no walls of text, just watch and do.

@@ -237,6 +237,7 @@ fn draw_checkerboard(
   for row in 0..rows {
     for col in 0..cols {
       let color = if (row + col) % 2 == 0 { light } else { dark };
+
       let cell_rect = egui::Rect::from_min_size(
         egui::pos2(
           rect.min.x + col as f32 * cell_size,

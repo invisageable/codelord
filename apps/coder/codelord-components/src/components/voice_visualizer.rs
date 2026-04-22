@@ -1,6 +1,4 @@
 //! Voice visualizer component for the voice control system.
-//!
-//! Pure ECS component - reads from VoiceResource, no Arc<Mutex> access.
 
 use crate::components::waveform;
 

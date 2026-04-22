@@ -79,12 +79,15 @@ impl VoiceDispatcher {
                 // Check if action is Unknown - treat as error
                 if answer.action.action == "Unknown" {
                   log::warn!("[Voice] Server returned Unknown action");
+
                   visualizer_clone.set_status(VisualizerStatus::Error);
                   tokio::time::sleep(Duration::from_millis(300)).await;
                   visualizer_clone.set_status(VisualizerStatus::Idle);
                 } else {
                   visualizer_clone.set_status(VisualizerStatus::Success);
+
                   let _ = action_sender_clone.send_async(answer.action).await;
+
                   tokio::time::sleep(Duration::from_millis(300)).await;
                   visualizer_clone.set_status(VisualizerStatus::Idle);
                 }
