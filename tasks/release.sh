@@ -39,7 +39,10 @@ cd "$PROJECT_DIR/target/release/bundle/osx"
 tar czvf "$DIST_DIR/$ARTIFACT" codelord.app
 cd "$PROJECT_DIR"
 
+(cd "$DIST_DIR" && shasum -a 256 "$ARTIFACT" > "$ARTIFACT.sha256")
+
 echo "Packaged: apps/coder/codelord-release/$ARTIFACT"
+echo "Checksum: apps/coder/codelord-release/$ARTIFACT.sha256"
 
 # --- Tag and Release ---
 
@@ -55,6 +58,7 @@ fi
 
 gh release create "$VERSION" \
   "$DIST_DIR/$ARTIFACT" \
+  "$DIST_DIR/$ARTIFACT.sha256" \
   --title "codelord $VERSION" \
   --generate-notes
 
