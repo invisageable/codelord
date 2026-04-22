@@ -10,15 +10,7 @@
 
 [home](https://github.com/invisageable/zo) — [install](./apps/coder/codelord-notes/public/guidelines/01-install.md) — [how-to](./apps/coder/codelord-how-to) — [license](#license)  
 
-![codelord-interface-overview](./apps/coder/codelord-assets/images/preview/preview-codelord-interface-overview.gif)
-
-## warning.
-
-**wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip.**
-
-THiS iS A LiViNG PROJECT, FORGED iN THE OPEN. EXPECT ROUGH EDGES AND RADiCAL iDEAS.   
-
-**wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip wip.**  
+![codelord-welcome](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-welcome.gif)
 
 ## about.
 
@@ -42,6 +34,20 @@ JOiN THE DEVOLUTiON.
 | VOiCE CONTROL | ✅          | ❌          | ❌                  | ❌            |
 | PRESENTER     | ✅          | ❌          | ❌                  | ❌            |
 | EASTER EGGS   | ✅          | ❌          | ❌                  | ❌            |
+
+## builtin features.
+
+**-filescope**
+
+![codelord-filescope](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-filescope.gif)
+
+iNSPIRED BY ViM'S TELESCOPE, FiLESCOPE iT'S AN ELEGANT FiLE FINDER THAT'S LET YOU SEARCH ANY FiLES iN YOUR WORKSPACE.
+
+**-magic-zoom**
+
+![codelord-interface-overview](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-magic-zoom.gif)
+
+ZOOM-iN AND ZOOM-OUT iN A JiT WAY — USE `CMD+E` TO ENABLE THE MAGIC ZOOM. VERY USEFUL FOR DEMOS, TALKS AND SO ON.
 
 ## contributing.
 
