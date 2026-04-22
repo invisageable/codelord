@@ -128,7 +128,7 @@ use codelord_core::events::{
 };
 use codelord_core::git::components::TabBlame;
 use codelord_core::icon::components::{Arrow, Icon};
-use codelord_core::keyboard::{ClearFocusRequest, FocusRequest, KeyboardFocus};
+use codelord_core::keyboard::{FocusRequest, KeyboardFocus};
 use codelord_core::playground::PlaygroundHoveredSpan;
 use codelord_core::symbol::{
   StickyScrollSettings, SymbolAnchor, SymbolMap, TabSymbols,
@@ -419,7 +419,6 @@ pub fn show<M: Component>(
     .unwrap_or(false);
 
   let mut request_focus = false;
-  let mut clear_focus = false;
   let mut cursor_blink_active = false;
   let mut shimmer_active = false;
 
@@ -964,12 +963,13 @@ pub fn show<M: Component>(
     events_to_spawn.push(EventToSpawn::ToggleFold(symbol_idx));
   }
 
-  if ui.input(|i| i.pointer.any_click())
-    && !available_rect
-      .contains(ui.input(|i| i.pointer.hover_pos().unwrap_or_default()))
-  {
-    clear_focus = true;
-  }
+  // Don't clear focus just because a click landed outside the editor
+  // rect. Sibling focus-grabbing widgets (terminal, filescope, …) set
+  // focus to themselves on click via `KeyboardFocus::set`, which
+  // implicitly drops ours. Proactively spawning `ClearFocusRequest`
+  // here races with those `set` calls — the request lands a frame
+  // later and clobbers the new focus, so typing into the terminal
+  // after clicking it would silently do nothing.
 
   if has_focus || request_focus {
     collect_keyboard_events(ui, &mut events_to_spawn);
@@ -1020,9 +1020,6 @@ pub fn show<M: Component>(
 
   if request_focus {
     world.spawn(FocusRequest::new(entity));
-  }
-  if clear_focus {
-    world.spawn(ClearFocusRequest);
   }
 
   if cursor_blink_active
