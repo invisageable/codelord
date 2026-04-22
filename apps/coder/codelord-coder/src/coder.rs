@@ -360,12 +360,10 @@ impl eframe::App for Coder {
 
             if let Some(ref mut vm) = self.voice_manager
               && vm.load_transcriber()
-            {
-              if let Some(mut voice) =
+              && let Some(mut voice) =
                 self.world.get_resource_mut::<VoiceResource>()
-              {
-                voice.is_available = true;
-              }
+            {
+              voice.is_available = true;
             }
 
             if let Some(mut model_state) =
