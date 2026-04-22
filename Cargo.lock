@@ -1325,7 +1325,7 @@ dependencies = [
 
 [[package]]
 name = "codelord"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "codelord-coder",
  "eframe",
@@ -1334,7 +1334,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-audio"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "flume 0.12.0",
  "log",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-coder"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bevy_ecs",
  "codelord-audio",
@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-components"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "alacritty_terminal",
  "bytemuck",
@@ -1402,7 +1402,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "aho-corasick",
  "bevy_ecs",
@@ -1434,7 +1434,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-git"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "log",
  "rustc-hash 2.1.1",
@@ -1442,14 +1442,14 @@ dependencies = [
 
 [[package]]
 name = "codelord-i18n"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "rust-i18n",
 ]
 
 [[package]]
 name = "codelord-language"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "cc",
  "codelord-core",
@@ -1476,14 +1476,14 @@ dependencies = [
 
 [[package]]
 name = "codelord-protocol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "codelord-sdk"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "codelord-core",
  "codelord-protocol",
@@ -1503,7 +1503,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-server"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "axum",
  "codelord-protocol",
@@ -1531,7 +1531,7 @@ dependencies = [
 
 [[package]]
 name = "codelord-voice"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bevy_ecs",
  "codelord-protocol",

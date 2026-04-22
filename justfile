@@ -77,12 +77,12 @@ bump_eazy bump:
   cargo set-version -p eazy --bump {{bump}}
 
 # Bump all zo-* crates together
-bump_zo bump:
+bump_codelord bump:
   #!/usr/bin/env sh
-  for crate in $(cargo ws list | grep '^zo-'); do
+  for crate in $(cargo ws list | grep '^codelord-'); do
     cargo set-version -p "$crate" --bump {{bump}}
   done
-  cargo set-version -p zo --bump {{bump}}
+  cargo set-version -p codelord --bump {{bump}}
 
 # List all workspace crates and their versions
 list_versions:
