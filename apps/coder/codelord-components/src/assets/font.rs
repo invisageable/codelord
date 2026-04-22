@@ -99,6 +99,7 @@ pub struct Font {
   /// The font data.
   data: egui::FontData,
 }
+
 impl Font {
   /// Creates a new [`Font`] instance.
   #[inline(always)]

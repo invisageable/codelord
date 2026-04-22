@@ -23,6 +23,7 @@ pub mod panel;
 pub mod playground;
 pub mod popup;
 pub mod previews;
+pub mod remote;
 pub mod runtime;
 pub mod search;
 pub mod session;

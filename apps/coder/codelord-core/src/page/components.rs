@@ -45,11 +45,13 @@ impl Page {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActivePage;
 
-/// Direction of slide animation between pages
+/// Direction of the slide animation between pages (distinct from
+/// [`crate::codeshow::SlideDirection`], which is presentation-slide
+/// navigation).
 #[derive(Component, Debug, Clone, Copy, PartialEq)]
-pub enum SlideDirection {
-  /// New page slides in from the right
+pub enum TransitionDirection {
+  /// New page slides in from the right.
   Left,
-  /// New page slides in from the left
+  /// New page slides in from the left.
   Right,
 }

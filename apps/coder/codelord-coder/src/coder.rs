@@ -1,21 +1,15 @@
 use codelord_components::assets;
-use codelord_components::components::effects;
 use codelord_components::components::indicators::frame_history;
 use codelord_components::components::layouts::base;
-use codelord_components::components::organisms::{
-  statusbar as statusbar_view, titlebar as titlebar_view,
-};
-use codelord_components::components::overlays;
-use codelord_components::components::panels::music_player;
-use codelord_components::components::panels::search as search_panel;
 use codelord_components::components::renderers::svg;
+use codelord_components::components::structure;
+use codelord_components::components::{effects, organisms, overlays, panels};
+use codelord_components::radius;
 use codelord_core::animation::components::DeltaTime;
-use codelord_core::animation::resources::ShakeAnimation;
 use codelord_core::animation::resources::{
-  ActiveAnimations, ContinuousAnimations,
+  ActiveAnimations, CenterWindowAnimation, ContinuousAnimations, ShakeAnimation,
 };
 use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
-use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
 use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
@@ -50,8 +44,8 @@ use codelord_core::voice::resources::{
 use codelord_core::{
   about, animation, audio, codeshow, color, drag_and_drop, ecs, filescope, git,
   instruction, keyboard, loading, magic_zoom, navigation, page, panel,
-  playground, popup, previews, runtime, search, settings, statusbar, symbol,
-  tabbar, terminal, text_editor, theme, titlebar, toast, voice, xmb,
+  playground, popup, previews, remote, runtime, search, settings, statusbar,
+  symbol, tabbar, terminal, text_editor, theme, titlebar, toast, voice, xmb,
 };
 use codelord_protocol::compilation::CompilationEvent;
 use codelord_protocol::event::ServerEvent;
@@ -66,14 +60,6 @@ use raw_window_handle::HasWindowHandle;
 use swisskit::renderer::html::HtmlRenderer;
 
 use std::sync::Arc;
-
-/// Animation state for smooth window centering.
-struct CenterWindowAnimation {
-  start_time: f64,
-  duration: f64,
-  start_pos: egui::Pos2,
-  end_pos: egui::Pos2,
-}
 
 /// Production-ready IDE Application
 pub struct Coder {
@@ -99,23 +85,19 @@ pub struct Coder {
   prev_visualizer_status: VisualizerStatus,
   /// Shake animation for error feedback
   shake_animation: Option<ShakeAnimation>,
-  /// Center window animation
   center_animation: Option<CenterWindowAnimation>,
-  /// HTML preview WebView (stored outside ECS because wry::WebView is
-  /// !Send+!Sync)
+  /// HTML preview WebView. Stored outside ECS because `wry::WebView`
+  /// is `!Send + !Sync`.
   html_preview_webview: HtmlRenderer,
-  /// Whether the window handle has been set for the HTML preview WebView
   html_preview_handle_set: bool,
-  /// Playground WebView for templating mode (stored outside ECS)
+  /// Playground WebView for templating mode. Stored outside ECS for
+  /// the same reason as `html_preview_webview`.
   playground_webview: HtmlRenderer,
-  /// Whether the window handle has been set for the playground WebView
   playground_handle_set: bool,
   /// Flag to clear session on next save (instead of saving)
   clear_session_on_save: bool,
   /// Channel to receive compilation events from server
   compilation_event_rx: Option<Receiver<CompilationEvent>>,
-  /// Gilrs gamepad/remote control input handler
-  gilrs: Option<gilrs::Gilrs>,
 }
 
 impl Coder {
@@ -164,8 +146,7 @@ impl Coder {
     filescope::install(&mut world);
     codeshow::install(&mut world);
     playground::install(&mut world);
-
-    // Initialize Async Runtime & Voice System
+    remote::install(&mut world);
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
       .worker_threads(2)
@@ -177,8 +158,6 @@ impl Coder {
 
     let sdk = Arc::new(Sdk::new(runtime.handle().clone()));
     let (voice_action_tx, voice_action_rx) = flume::unbounded::<VoiceAction>();
-
-    // Install VoiceVisualizerState + hand a clone to VoiceManager below.
     let visualizer_state = codelord_voice::install_visualizer(&mut world);
 
     let voice_manager = VoiceManager::new(
@@ -188,9 +167,10 @@ impl Coder {
       sdk.clone(),
       visualizer_state,
     )
-    .map_err(|e| {
-      log::warn!("Voice manager initialization failed: {e}");
-      e
+    .map_err(|err| {
+      log::warn!("Voice manager initialization failed: {err}");
+
+      err
     })
     .ok();
 
@@ -200,7 +180,6 @@ impl Coder {
         .map(|mut voice_res| voice_res.is_available = vm.is_available())
     });
 
-    // Check voice model status on startup
     if let Some(mut model_state) = world.get_resource_mut::<VoiceModelState>() {
       if transcriber::model_exists() {
         model_state.set_ready();
@@ -216,8 +195,6 @@ impl Coder {
       }
     }
 
-    // Spawn Initial Entities
-
     titlebar::spawn_default(&mut world);
     statusbar::spawn_default_icons(&mut world);
     settings::spawn_popup(&mut world);
@@ -225,15 +202,11 @@ impl Coder {
     tabbar::spawn_context_popup(&mut world);
     previews::sqlite::spawn_export_popup(&mut world);
 
-    // Restore Session or Create Default Tab
-
     let session_restored = Self::restore_session(cc, &mut world);
 
     if !session_restored {
       playground::spawn_default_tab(&mut world);
     }
-
-    // Setup Systems Schedule
 
     let mut schedule = Schedule::default();
 
@@ -256,8 +229,7 @@ impl Coder {
     voice::register_systems(&mut schedule);
     filescope::register_systems(&mut schedule);
     previews::register_systems(&mut schedule);
-
-    // Setup Compilation Event Listener
+    remote::register_systems(&mut schedule);
 
     let (compilation_tx, compilation_rx) = flume::unbounded();
     let sdk_clone = Arc::clone(&sdk);
@@ -275,8 +247,8 @@ impl Coder {
 
           log::warn!("[Compilation] Event stream closed");
         }
-        Err(e) => {
-          log::warn!("[Compilation] Failed to connect to events: {e}");
+        Err(err) => {
+          log::warn!("[Compilation] Failed to connect to events: {err}");
         }
       }
     });
@@ -299,61 +271,6 @@ impl Coder {
       playground_handle_set: false,
       clear_session_on_save: false,
       compilation_event_rx: Some(compilation_rx),
-      gilrs: gilrs::Gilrs::new()
-        .map_err(|e| log::warn!("[Gilrs] Failed to initialize: {e}"))
-        .ok(),
-    }
-  }
-}
-
-impl Coder {
-  /// Layer id of the magic-zoom sublayer wrapping `self.show(ui)`.
-  fn magic_zoom_layer_id() -> egui::LayerId {
-    egui::LayerId::new(egui::Order::Middle, egui::Id::new("magic_zoom_layer"))
-  }
-
-  /// Current camera transform, or `None` if the zoom is effectively 1x.
-  /// Returning `None` lets callers skip-wrap on the identity case.
-  fn magic_zoom_transform(&self) -> Option<egui::emath::TSTransform> {
-    let state = self.world.resource::<MagicZoomState>();
-    let zoom = state.zoom();
-
-    if (zoom - 1.0).abs() < 0.001 {
-      return None;
-    }
-
-    let (cx, cy) = state.center();
-    let c = egui::vec2(cx, cy);
-
-    Some(
-      egui::emath::TSTransform::from_translation(c)
-        * egui::emath::TSTransform::from_scaling(zoom)
-        * egui::emath::TSTransform::from_translation(-c),
-    )
-  }
-
-  /// Propagate the magic-zoom transform to every visible layer except our
-  /// own (already transformed in `fn ui`). Overlays — filescope, popups,
-  /// dialogs, toasts — render via `egui::Area` outside the `scope_builder`
-  /// wrap, so without this they'd stay at 1x while the main body zooms.
-  ///
-  /// On idle frames we push `TSTransform::IDENTITY` to clear any stale
-  /// entries from a just-finished zoom (egui stores transforms across
-  /// frames).
-  fn propagate_magic_zoom(&self, ctx: &egui::Context) {
-    let magic_id = Self::magic_zoom_layer_id();
-    let transform = self
-      .magic_zoom_transform()
-      .unwrap_or(egui::emath::TSTransform::IDENTITY);
-
-    let layer_ids: Vec<egui::LayerId> = ctx.memory(|m| m.layer_ids().collect());
-
-    for id in layer_ids {
-      if id == magic_id {
-        continue;
-      }
-
-      ctx.set_transform_layer(id, transform);
     }
   }
 }
@@ -376,23 +293,22 @@ impl eframe::App for Coder {
   }
 
   fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-    // Magic zoom: wrap the entire app body (titlebar, search, central,
-    // statusbar, music player) in a transformed layer when active.
-    // Overlays are handled separately in `fn logic` via
-    // `propagate_magic_zoom` — they render as top-level `Area`s and need
-    // their own transform pass. Skip-wrap keeps the identity case
-    // zero-cost.
-    let transform = self.magic_zoom_transform();
+    // Wrap the app body in a transformed layer when zoomed. Overlays
+    // render as top-level `Area`s outside this wrap, so they get their
+    // own transform pass in `effects::magic_zoom::propagate`. `None`
+    // keeps the identity case zero-cost.
+    let transform = effects::magic_zoom::transform(&self.world);
 
     egui::CentralPanel::default()
       .frame(egui::Frame::NONE)
       .show_inside(ui, |ui| {
         let Some(transform) = transform else {
           self.show(ui);
+
           return;
         };
 
-        let layer_id = Self::magic_zoom_layer_id();
+        let layer_id = effects::magic_zoom::layer_id();
 
         ui.ctx().set_transform_layer(layer_id, transform);
 
@@ -410,12 +326,9 @@ impl eframe::App for Coder {
 
     let delta = ctx.input(|i| i.stable_dt);
 
-    // Update delta time resource for ECS systems
     if let Some(mut dt) = self.world.get_resource_mut::<DeltaTime>() {
       dt.update(delta);
     }
-
-    // Poll Voice Actions (from async dispatcher)
 
     while let Ok(voice_action) = self.voice_action_rx.try_recv() {
       log::info!("[Voice] Received action: {}", voice_action.action);
@@ -425,8 +338,6 @@ impl eframe::App for Coder {
         payload: voice_action.payload,
       });
     }
-
-    // Poll Voice Model Download (if in progress)
 
     if let Some(rx) = &self.voice_model_download_rx {
       while let Ok(result) = rx.try_recv() {
@@ -441,18 +352,15 @@ impl eframe::App for Coder {
           codelord_sdk::voice::DownloadResult::Complete(_path) => {
             log::info!("[Voice] Model download complete");
 
-            // Finish global loading indicator
             if let Some(mut loading) =
               self.world.get_resource_mut::<GlobalLoading>()
             {
               loading.finish(LoadingTask::Network);
             }
 
-            // Load transcriber into VoiceManager
             if let Some(ref mut vm) = self.voice_manager
               && vm.load_transcriber()
             {
-              // Update VoiceResource availability
               if let Some(mut voice) =
                 self.world.get_resource_mut::<VoiceResource>()
               {
@@ -474,10 +382,9 @@ impl eframe::App for Coder {
 
             break;
           }
-          codelord_sdk::voice::DownloadResult::Error(e) => {
-            log::error!("[Voice] Model download failed: {e}");
+          codelord_sdk::voice::DownloadResult::Error(err) => {
+            log::error!("[Voice] Model download failed: {err}");
 
-            // Finish global loading indicator
             if let Some(mut loading) =
               self.world.get_resource_mut::<GlobalLoading>()
             {
@@ -487,11 +394,11 @@ impl eframe::App for Coder {
             if let Some(mut model_state) =
               self.world.get_resource_mut::<VoiceModelState>()
             {
-              model_state.set_error(&e);
+              model_state.set_error(&err);
             }
 
             self.world.write_message(ToastCommand::error(format!(
-              "Voice model download failed: {e}"
+              "Voice model download failed: {err}"
             )));
 
             self.voice_model_download_rx = None;
@@ -501,8 +408,6 @@ impl eframe::App for Coder {
         }
       }
     }
-
-    // Poll Compilation Events (from server)
 
     // Collect events first to avoid borrow conflict.
     let compilation_events: Vec<_> = self
@@ -515,18 +420,16 @@ impl eframe::App for Coder {
       playground::apply_compilation_event(&mut self.world, event);
     }
 
-    // Open SQLite Database (requires runtime.block_on, can't be in ECS system)
-    // Note: Result polling, query dispatch, and connection closing are handled
-    // by ECS systems in codelord-core::previews::sqlite
+    // SQLite open stays here because it needs `runtime.block_on`. All
+    // other SQLite lifecycle (query dispatch, result polling, close)
+    // lives in `codelord_core::previews::sqlite`.
     {
-      // Check if we need to open a new database
       let need_open = self
         .world
         .get_resource::<SqlitePreviewState>()
         .filter(|s| s.enabled && s.needs_reload && !s.is_loading)
         .and_then(|s| s.current_file.clone())
         .filter(|_| {
-          // Only open if not already connected
           self
             .world
             .get_resource::<SqliteConnection>()
@@ -539,14 +442,12 @@ impl eframe::App for Coder {
 
         log::info!("[SQLite] Opening database: {path_str}");
 
-        // Set loading state
         if let Some(mut state) =
           self.world.get_resource_mut::<SqlitePreviewState>()
         {
           state.is_loading = true;
         }
 
-        // Open database (blocking call - needs runtime)
         let runtime_handle = self.runtime.handle().clone();
 
         match self.runtime.block_on(codelord_sdk::sqlite::open_database(
@@ -554,25 +455,23 @@ impl eframe::App for Coder {
           &runtime_handle,
         )) {
           Ok((query_tx, result_rx)) => {
-            // Send initial LoadTables query
             let _ = query_tx.send(SqliteQuery::LoadTables);
 
-            // Store channels in SqliteConnection resource
-            if let Some(mut conn) =
+            if let Some(mut connection) =
               self.world.get_resource_mut::<SqliteConnection>()
             {
-              conn.set(query_tx, result_rx);
+              connection.set(query_tx, result_rx);
             }
 
             log::info!("[SQLite] Database opened, loading tables...");
           }
-          Err(e) => {
-            log::error!("[SQLite] Failed to open database: {e}");
+          Err(err) => {
+            log::error!("[SQLite] Failed to open database: {err}");
 
             if let Some(mut state) =
               self.world.get_resource_mut::<SqlitePreviewState>()
             {
-              state.data.error = Some(e);
+              state.data.error = Some(err);
               state.is_loading = false;
               state.needs_reload = false;
             }
@@ -581,18 +480,17 @@ impl eframe::App for Coder {
       }
     }
 
-    // Open PDF File (spawns background thread for rendering)
-    // Note: Result polling, query dispatch, and connection closing are handled
-    // by ECS systems in codelord-core::previews::pdf
+    // PDF open stays here because it spawns a background rendering
+    // thread tied to the app lifecycle. Everything else (tab-change
+    // handling, loading state, animations) lives in ECS systems
+    // under `codelord_core::previews::pdf`.
     {
-      // Only load PDF when on Editor page
       let on_editor_page = self
         .world
         .get_resource::<PageResource>()
         .map(|p| p.active_page == Page::Editor)
         .unwrap_or(false);
 
-      // Check if we need to open a new PDF
       let need_open = on_editor_page
         .then(|| {
           self
@@ -601,7 +499,6 @@ impl eframe::App for Coder {
             .filter(|s| s.enabled && s.is_loading)
             .and_then(|s| s.current_file.clone())
             .filter(|_| {
-              // Only open if not already connected
               self
                 .world
                 .get_resource::<PdfConnection>()
@@ -616,53 +513,46 @@ impl eframe::App for Coder {
 
         match codelord_sdk::pdf::open_pdf(&file) {
           Ok((query_tx, result_rx)) => {
-            // Store channels in PdfConnection resource
             if let Some(mut conn) =
               self.world.get_resource_mut::<PdfConnection>()
             {
               conn.set(query_tx, result_rx);
             }
 
-            // Note: GlobalLoading and ActiveAnimations are managed by ECS
-            // systems (open_pdf_preview_system,
-            // update_pdf_preview_on_tab_change)
-
             log::info!("[PDF] File opened, worker started");
           }
-          Err(e) => {
-            log::error!("[PDF] Failed to open file: {e}");
+          Err(err) => {
+            log::error!("[PDF] Failed to open file: {err}");
 
             if let Some(mut state) =
               self.world.get_resource_mut::<PdfPreviewState>()
             {
-              state.set_error(e);
+              state.set_error(err);
             }
           }
         }
       }
     }
 
-    // Handle CompileRequest (trigger SDK compilation)
-
     let compile_requests: Vec<_> = self
       .world
       .query_filtered::<(bevy_ecs::entity::Entity, &CompileRequest), ()>()
       .iter(&self.world)
-      .map(|(e, req)| (e, req.source.clone(), req.target.clone(), req.stage))
+      .map(|(err, req)| {
+        (err, req.source.clone(), req.target.clone(), req.stage)
+      })
       .collect();
 
     for (entity, source, target, stage) in compile_requests {
       log::info!(
-        "[Compilation] Triggering compilation for source ({} bytes, stage {stage})",
+        "[Compilation] Triggering compilation for source ({} bytes, stage {stage:?})",
         source.len(),
       );
 
-      // Set compiling state.
       if let Some(mut output) =
         self.world.get_resource_mut::<PlaygroundOutput>()
       {
         output.compilation.is_compiling = true;
-        // Clear previous results.
         output.compilation.tokens = None;
         output.compilation.tree = None;
         output.compilation.sir = None;
@@ -670,13 +560,9 @@ impl eframe::App for Coder {
         output.compilation.ui = None;
       }
 
-      // Trigger compilation via SDK.
       self.sdk.compile(source, target, stage);
-      // Despawn the request entity.
       self.world.despawn(entity);
     }
-
-    // Check for Clear Session Request
 
     if let Some(entity) = self
       .world
@@ -690,9 +576,8 @@ impl eframe::App for Coder {
       log::info!("[Session] Session cleared and state reset");
     }
 
-    // Handle Window Requests (need egui::Context)
-
-    // CenterWindow
+    // Window-request handlers below all need `ctx.send_viewport_cmd`,
+    // so they stay here rather than in a core system.
     if let Some(entity) = self
       .world
       .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<CenterWindowRequest>>()
@@ -703,14 +588,12 @@ impl eframe::App for Coder {
 
       self.world.despawn(entity);
 
-      // Get current position, target center position, and current time
       let animation_data = ctx.input(|i| {
         let current_pos = i.viewport().outer_rect.map(|r| r.min)?;
         let monitor_size = i.viewport().monitor_size?;
         let inner_rect = i.viewport().inner_rect?;
         let window_size = inner_rect.size();
 
-        // Calculate center position
         let center_x = (monitor_size.x - window_size.x) / 2.0;
         let center_y = (monitor_size.y - window_size.y) / 2.0;
         let center_pos = egui::pos2(center_x, center_y);
@@ -719,12 +602,14 @@ impl eframe::App for Coder {
       });
 
       if let Some((start_pos, end_pos, current_time)) = animation_data {
-        self.center_animation = Some(CenterWindowAnimation {
-          start_time: current_time,
-          duration: 0.4, // 400ms - fast but smooth
-          start_pos,
-          end_pos,
-        });
+        self.center_animation = Some(CenterWindowAnimation::new(
+          current_time,
+          start_pos.x,
+          start_pos.y,
+          end_pos.x,
+          end_pos.y,
+        ));
+
         if let Some(mut active) = self.world.get_resource_mut::<ActiveAnimations>()
         {
           active.increment();
@@ -732,7 +617,6 @@ impl eframe::App for Coder {
       }
     }
 
-    // ShakeWindow
     if let Some(entity) = self
       .world
       .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<ShakeWindowRequest>>()
@@ -756,7 +640,6 @@ impl eframe::App for Coder {
       }
     }
 
-    // PositionWindowLeftHalf
     if let Some(entity) = self
       .world
       .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<PositionWindowLeftHalfRequest>>()
@@ -780,7 +663,6 @@ impl eframe::App for Coder {
       }
     }
 
-    // PositionWindowRightHalf
     if let Some(entity) = self
       .world
       .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<PositionWindowRightHalfRequest>>()
@@ -807,86 +689,28 @@ impl eframe::App for Coder {
 
     codeshow::poll_pending(&mut self.world, delta);
 
-    // Gilrs Remote Control Input (NORWII N76 and similar presenters)
-    if let Some(gilrs) = self.gilrs.as_mut() {
-      while let Some(event) = gilrs.next_event() {
-        match event.event {
-          gilrs::EventType::ButtonPressed(button, _) => {
-            // NORWII N76 typically maps to these buttons:
-            // - Next slide: DPadRight, South (A), or East (B)
-            // - Previous slide: DPadLeft, West (X), or North (Y)
-            // Some remotes also use triggers
-            let direction = match button {
-              gilrs::Button::DPadRight
-              | gilrs::Button::South
-              | gilrs::Button::East
-              | gilrs::Button::RightTrigger
-              | gilrs::Button::RightTrigger2 => Some(SlideDirection::Next),
-              gilrs::Button::DPadLeft
-              | gilrs::Button::West
-              | gilrs::Button::North
-              | gilrs::Button::LeftTrigger
-              | gilrs::Button::LeftTrigger2 => Some(SlideDirection::Previous),
-              gilrs::Button::DPadUp | gilrs::Button::Start => {
-                Some(SlideDirection::First)
-              }
-              gilrs::Button::DPadDown | gilrs::Button::Select => {
-                Some(SlideDirection::Last)
-              }
-              _ => None,
-            };
-
-            if let Some(dir) = direction {
-              // Only navigate if presentation is loaded
-              let is_loaded = self
-                .world
-                .get_resource::<CodeshowState>()
-                .map(|s| s.is_loaded())
-                .unwrap_or(false);
-
-              if is_loaded {
-                self.world.spawn(NavigateSlide { direction: dir });
-                log::debug!("[Gilrs] Button {button:?} -> {dir:?}");
-              }
-            }
-          }
-          gilrs::EventType::Connected => {
-            let gamepad = gilrs.gamepad(event.id);
-            log::info!("[Gilrs] Device connected: {}", gamepad.name());
-          }
-          gilrs::EventType::Disconnected => {
-            log::info!("[Gilrs] Device disconnected: {:?}", event.id);
-          }
-          _ => {}
-        }
-      }
-    }
-
     // Must run BEFORE voice sync so VoiceToggleCommand is processed first.
     self.schedule.run(&mut self.world);
 
-    // Get current ECS voice state (now reflects any toggle commands)
     let current_state = self
       .world
       .get_resource::<VoiceResource>()
       .map(|v| v.state)
       .unwrap_or(VoiceState::Idle);
 
-    // Sync voice state from ECS to VoiceManager (detect transitions)
     if let Some(voice_manager) = self.voice_manager.as_mut() {
       voice_manager.try_restore_transcriber();
 
-      // Handle state transitions
       if current_state != self.prev_voice_state {
         match (self.prev_voice_state, current_state) {
           (VoiceState::Idle, VoiceState::Listening) => {
-            if let Some(e) = voice_manager.start_listening().err() {
-              log::error!("[Voice] Failed to start listening: {e}");
+            if let Some(err) = voice_manager.start_listening().err() {
+              log::error!("[Voice] Failed to start listening: {err}");
 
               if let Some(mut voice) =
                 self.world.get_resource_mut::<VoiceResource>()
               {
-                voice.set_error(e.to_string());
+                voice.set_error(err.to_string());
               }
             }
           }
@@ -897,7 +721,6 @@ impl eframe::App for Coder {
         }
       }
 
-      // Sync waveform data from VoiceManager to ECS resource
       let status = voice_manager.get_status();
       let waveform = voice_manager.get_waveform();
 
@@ -905,9 +728,9 @@ impl eframe::App for Coder {
         self.world.get_resource_mut::<VoiceResource>()
       {
         voice_res.waveform = waveform;
+
         voice_res.set_visualizer_status(status);
 
-        // Update state from visualizer status (Processing, etc.)
         match status {
           VisualizerStatus::Processing
             if voice_res.state == VoiceState::Listening =>
@@ -924,7 +747,6 @@ impl eframe::App for Coder {
         }
       }
 
-      // Trigger shake animation on error transition
       if matches!(status, VisualizerStatus::Error)
         && !matches!(self.prev_visualizer_status, VisualizerStatus::Error)
         && let Some(pos) = ctx.input(|i| i.viewport().outer_rect.map(|r| r.min))
@@ -938,104 +760,48 @@ impl eframe::App for Coder {
       self.prev_visualizer_status = status;
     }
 
-    // Track state for next frame
     self.prev_voice_state = current_state;
 
-    // Update Center Window Animation
-
-    let center_complete = self
+    let center_step = self
       .center_animation
       .as_ref()
-      .map(|anim| {
-        let current_time = ctx.input(|i| i.time);
-        let elapsed = current_time - anim.start_time;
-        let progress = (elapsed / anim.duration).min(1.0) as f32;
+      .map(|anim| anim.tick(ctx.input(|i| i.time)));
 
-        if progress < 1.0 {
-          // OutExpo easing: 1 - 2^(-10 * progress)
-          let eased = 1.0 - 2.0_f32.powf(-10.0 * progress);
+    if let Some(step) = center_step {
+      ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
+        step.x, step.y,
+      )));
 
-          let new_x =
-            anim.start_pos.x + (anim.end_pos.x - anim.start_pos.x) * eased;
-          let new_y =
-            anim.start_pos.y + (anim.end_pos.y - anim.start_pos.y) * eased;
-
-          ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(
-            egui::pos2(new_x, new_y),
-          ));
-          false
-        } else {
-          // Animation complete - set final position
-          ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(
-            anim.end_pos,
-          ));
-          true
+      if step.finished {
+        self.center_animation = None;
+        if let Some(mut active) =
+          self.world.get_resource_mut::<ActiveAnimations>()
+        {
+          active.decrement();
         }
-      })
-      .unwrap_or(false);
-
-    // Clear center animation and decrement counter if complete
-    if center_complete {
-      self.center_animation = None;
-      if let Some(mut active) =
-        self.world.get_resource_mut::<ActiveAnimations>()
-      {
-        active.decrement();
       }
     }
 
-    // Update Shake Animation
-
-    let shake_complete = self
+    let shake_step = self
       .shake_animation
       .as_ref()
-      .map(|shake| {
-        let current_time = ctx.input(|i| i.time);
-        let elapsed = current_time - shake.start_time;
-        let progress = (elapsed / shake.duration).min(1.0) as f32;
+      .map(|anim| anim.tick(ctx.input(|i| i.time)));
 
-        if progress < 1.0 {
-          let frequency = 20.0;
-          let damping = 3.0;
-          let wave = (elapsed * frequency * std::f64::consts::TAU).sin() as f32;
-          let amplitude = shake.intensity * (1.0 - progress).powf(damping);
-          let seed = (elapsed * frequency).floor() as u32;
-          let offset_x = wave
-            * amplitude
-            * (if seed.is_multiple_of(2) { 1.0 } else { -1.0 });
-          let offset_y = wave
-            * amplitude
-            * 0.7
-            * (if seed.is_multiple_of(3) { 1.0 } else { -1.0 });
+    if let Some(step) = shake_step {
+      ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
+        step.x, step.y,
+      )));
 
-          let new_pos = egui::pos2(
-            shake.original_x + offset_x,
-            shake.original_y + offset_y,
-          );
-          ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(new_pos));
-          false
-        } else {
-          let original_pos = egui::pos2(shake.original_x, shake.original_y);
-          ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(
-            original_pos,
-          ));
-          true
+      if step.finished {
+        self.shake_animation = None;
+        if let Some(mut active) =
+          self.world.get_resource_mut::<ActiveAnimations>()
+        {
+          active.decrement();
         }
-      })
-      .unwrap_or(false);
-
-    // Clear shake animation and decrement counter if complete
-    if shake_complete {
-      self.shake_animation = None;
-
-      if let Some(mut active) =
-        self.world.get_resource_mut::<ActiveAnimations>()
-      {
-        active.decrement();
       }
     }
 
-    // Mark shake animation as active in ECS (for ContinuousAnimations)
     if self.shake_animation.is_some()
       && let Some(mut anim) =
         self.world.get_resource_mut::<ContinuousAnimations>()
@@ -1045,13 +811,10 @@ impl eframe::App for Coder {
 
     voice::tick_continuous_animation(&mut self.world);
 
-    // Apply Theme (animated or static)
     let visuals = assets::theme::get_animated_visuals(&self.world);
     ctx.set_visuals(visuals);
 
-    // HTML Preview WebView Integration (after UI rendered, rect available)
     {
-      // Set window handle on first frame
       if !self.html_preview_handle_set
         && let Ok(window_handle) = frame.window_handle()
       {
@@ -1064,7 +827,6 @@ impl eframe::App for Coder {
         log::debug!("[HtmlPreview] Window handle set");
       }
 
-      // Read preview state from ECS
       let (enabled, rect, needs_reload, current_file) = self
         .world
         .get_resource::<HtmlPreviewState>()
@@ -1078,7 +840,6 @@ impl eframe::App for Coder {
         })
         .unwrap_or((false, None, false, None));
 
-      // Sync visibility
       if enabled && !self.html_preview_webview.visible {
         self.html_preview_webview.show();
         self.html_preview_webview.try_create_webview();
@@ -1089,10 +850,8 @@ impl eframe::App for Coder {
         log::debug!("[HtmlPreview] WebView hidden");
       }
 
-      // Handle reload request (file changed)
       if enabled && needs_reload {
         if let Some(file_path) = &current_file {
-          // Send file path to SDK server for preview
           let path_str = file_path.to_string_lossy().to_string();
 
           self.sdk.send_html_preview_file(path_str);
@@ -1101,13 +860,11 @@ impl eframe::App for Coder {
           log::debug!("[HtmlPreview] Updated preview file: {file_path:?}");
         }
 
-        // Clear the reload flag
         if let Some(mut s) = self.world.get_resource_mut::<HtmlPreviewState>() {
           s.needs_reload = false;
         }
       }
 
-      // Update bounds if visible and rect available
       if enabled && let Some(r) = rect {
         self
           .html_preview_webview
@@ -1115,9 +872,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // Playground WebView Integration (for templating mode)
     {
-      // Set window handle on first frame
       if !self.playground_handle_set
         && let Ok(window_handle) = frame.window_handle()
       {
@@ -1130,14 +885,12 @@ impl eframe::App for Coder {
         log::debug!("[PlaygroundPreview] Window handle set");
       }
 
-      // Read playground webview state from ECS
       let (enabled, rect, needs_reload) = self
         .world
         .get_resource::<PlaygroundWebviewState>()
         .map(|s| (s.enabled, s.webview_rect, s.needs_reload))
         .unwrap_or((false, None, false));
 
-      // Sync visibility
       if enabled && !self.playground_webview.visible {
         self.playground_webview.show();
         self.playground_webview.try_create_webview();
@@ -1145,20 +898,17 @@ impl eframe::App for Coder {
         self.playground_webview.hide();
       }
 
-      // Handle reload request (compilation updated)
       if enabled && needs_reload {
         self.playground_webview.reload();
         log::debug!("[PlaygroundPreview] WebView reloaded");
 
-        // Clear the reload flag
-        if let Some(mut s) =
+        if let Some(mut webview_state) =
           self.world.get_resource_mut::<PlaygroundWebviewState>()
         {
-          s.needs_reload = false;
+          webview_state.needs_reload = false;
         }
       }
 
-      // Update bounds if visible and rect available
       if enabled && let Some(r) = rect {
         self
           .playground_webview
@@ -1194,37 +944,44 @@ impl Coder {
   fn show(&mut self, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
 
-    // Draw app border (on top of everything)
+    // Border + corner masks share a dedicated layer that
+    // `magic_zoom::propagate` skips, so they stay at 1× during zoom.
     let content_rect = ctx.input(|i| i.viewport_rect());
     let border_color = egui::Color32::from_gray(30);
+    let border_painter =
+      ctx.layer_painter(effects::magic_zoom::app_border_layer_id());
 
-    ctx
-      .layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        egui::Id::new("app_border"),
-      ))
-      .rect_stroke(
+    // Only mask the rounded-corner bites when zoomed — at identity,
+    // leaving them transparent lets the OS background show through.
+    if effects::magic_zoom::transform(&self.world).is_some() {
+      effects::magic_zoom::mask_corners(
+        &border_painter,
         content_rect,
         10.0,
-        egui::Stroke::new(1.0_f32, border_color),
-        egui::StrokeKind::Middle,
+        ctx.global_style().visuals.window_fill,
       );
+    }
+
+    border_painter.rect_stroke(
+      content_rect,
+      10.0,
+      egui::Stroke::new(1.0_f32, border_color),
+      egui::StrokeKind::Middle,
+    );
 
     egui::Panel::top("titlebar")
       .exact_size(28.0)
       .frame(
         egui::Frame::NONE
           .corner_radius(radius::symmetric(10, 0))
-          .fill(ctx.global_style().visuals.window_fill)
-          // .inner_margin(egui::Margin::symmetric(8, 0)),
+          .fill(ctx.global_style().visuals.window_fill),
       )
       .show_separator_line(false)
       .show_inside(ui, |ui| {
-        titlebar_view::show(ui, &mut self.world);
-        self.render_header_separator(ui);
+        organisms::titlebar::show(ui, &mut self.world);
+        structure::progress_separator::show(ui, &mut self.world);
       });
 
-    // Search panel (rendered at top level with animation)
     {
       let (search_visible, query_empty) = self
         .world
@@ -1237,11 +994,11 @@ impl Coder {
         .exact_size(50.0)
         .frame(egui::Frame::NONE.fill(ctx.global_style().visuals.window_fill))
         .show_animated_inside(ui, search_visible, |ui| {
-          search_panel::show(ui, &mut self.world);
+          panels::search::show(ui, &mut self.world);
         });
 
-      // Signal search hint animation at top level (since show_animated
-      // doesn't call show() when panel is hidden)
+      // `show_animated_inside` skips its body when hidden, so the
+      // hint animation has to be marked active from out here.
       if search_visible
         && query_empty
         && let Some(mut anim) =
@@ -1259,10 +1016,8 @@ impl Coder {
           .fill(ctx.global_style().visuals.window_fill)
           .inner_margin(egui::Margin::symmetric(8, 0)),
       )
-      .show_inside(ui, |ui| statusbar_view::show(ui, &mut self.world));
+      .show_inside(ui, |ui| organisms::statusbar::show(ui, &mut self.world));
 
-    // Music player panel (above statusbar).
-    // Get animated height for playlist expansion.
     let music_player_height = self
       .world
       .get_resource::<MusicPlayerState>()
@@ -1288,7 +1043,6 @@ impl Coder {
 
         let snapshot = audio.music_snapshot();
 
-        // Calculate progress based on playback position.
         let (progress_ratio, total_width) = if let Some(ref snap) = snapshot {
           let position_secs = snap.position().as_secs_f32();
 
@@ -1305,7 +1059,6 @@ impl Coder {
           (0.0, rect.width())
         };
 
-        // Only make progress bar interactive when there's a track loaded.
         if snapshot.is_some() {
           let progress_bar_rect = egui::Rect::from_min_size(
             egui::pos2(rect.left(), separator_y - 6.0),
@@ -1318,7 +1071,6 @@ impl Coder {
             egui::Sense::click(),
           );
 
-          // Handle click to seek.
           if progress_response.clicked()
             && let Some(click_pos) = progress_response.interact_pointer_pos()
           {
@@ -1338,13 +1090,11 @@ impl Coder {
             }
           }
 
-          // Change cursor on hover.
           if progress_response.hovered() {
             ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::PointingHand);
           }
         }
 
-        // Progress bar background track.
         ui.painter().line_segment(
           [
             egui::pos2(rect.left(), separator_y),
@@ -1353,7 +1103,6 @@ impl Coder {
           egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(60, 60, 60)),
         );
 
-        // Progress bar current position (lime green).
         let progress_width = total_width * progress_ratio;
         ui.painter().line_segment(
           [
@@ -1363,7 +1112,6 @@ impl Coder {
           egui::Stroke::new(3.0_f32, egui::Color32::from_rgb(204, 253, 62)),
         );
 
-        // Sync UI state with actual playback state from audio thread.
         if let Some(ref snap) = snapshot
           && let Some(mut state) =
             self.world.get_resource_mut::<MusicPlayerState>()
@@ -1372,29 +1120,28 @@ impl Coder {
             snap.state == codelord_audio::PlaybackState::Playing;
         }
 
-        music_player::show(ui, &mut self.world);
+        panels::music_player::show(ui, &mut self.world);
       });
 
-    // Read animated zoom margin for central panel (pure data, no method calls)
     let zoom_margin = self
       .world
       .get_resource::<tabbar::ZoomState>()
-      .map(|z| {
-        z.transition
+      .map(|state| {
+        state
+          .transition
           .as_ref()
           .map(|t| t.animated_margin)
-          .unwrap_or(if z.is_zoomed { 4.0 } else { 0.0 })
+          .unwrap_or(if state.is_zoomed { 4.0 } else { 0.0 })
       })
       .unwrap_or(0.0);
 
-    let margin_i8 = zoom_margin.round() as i8;
     let central_frame = egui::Frame::NONE
       .fill(if zoom_margin > 0.0 {
         egui::Color32::WHITE
       } else {
         ctx.global_style().visuals.window_fill
       })
-      .inner_margin(egui::Margin::same(margin_i8));
+      .inner_margin(egui::Margin::same(zoom_margin.round() as i8));
 
     egui::CentralPanel::default()
       .frame(central_frame)
@@ -1402,18 +1149,15 @@ impl Coder {
 
     overlays::popup::show(&ctx, &mut self.world);
 
-    // Render filescope overlay
     let filescope_response = overlays::filescope::show(&ctx, &mut self.world);
 
     filescope::apply_response(&mut self.world, filescope_response);
 
-    // Render unsaved changes dialog
     let unsaved_response =
       overlays::unsaved_changes_dialog::show(&ctx, &mut self.world);
 
     tabbar::apply_unsaved_changes_response(&mut self.world, unsaved_response);
 
-    // Render toast notifications overlay
     egui::Area::new(egui::Id::new("toaster_overlay"))
       .order(egui::Order::Foreground)
       .anchor(egui::Align2::RIGHT_TOP, egui::vec2(0.0, 0.0))
@@ -1430,20 +1174,17 @@ impl Coder {
         }
       });
 
-    // Magic zoom: apply transform to every overlay layer (popups, file
-    // picker, dialogs, toasts) now that they've all rendered.
-    self.propagate_magic_zoom(&ctx);
-    // Check if voice model download toast should be shown
+    // Overlays render as top-level `egui::Area`s, outside the main
+    // body's transform wrap — propagate the zoom so they zoom with it.
+    effects::magic_zoom::propagate(&ctx, &self.world);
     voice::check_model_toast(&mut self.world);
 
-    // Handle keyboard shortcuts
     if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::T)) {
       self.world.write_message(ThemeCommand {
         action: ThemeAction::Toggle,
       });
     }
 
-    // Tab navigation: Cmd+Shift+[ for previous, Cmd+Shift+] for next
     if ctx.input(|i| {
       i.modifiers.command
         && i.modifiers.shift
@@ -1460,7 +1201,6 @@ impl Coder {
       self.world.spawn(NavigateNextTabRequest);
     }
 
-    // Voice control: Cmd+Shift+Space
     if ctx.input(|i| {
       i.modifiers.command
         && i.modifiers.shift
@@ -1469,11 +1209,9 @@ impl Coder {
       self.world.write_message(VoiceToggleCommand);
     }
 
-    // Save file: Cmd+S
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::S)) {
       use ecs::query::With;
 
-      // Find active editor tab and spawn save request.
       let active_editor = self
         .world
         .query_filtered::<ecs::entity::Entity, (With<EditorTab>, With<Active>)>(
@@ -1486,19 +1224,16 @@ impl Coder {
       }
     }
 
-    // Search: Cmd+F
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::F)) {
       self.world.spawn(ToggleSearchRequest);
     }
 
-    // Git blame: Cmd+Shift+G
     if ctx.input(|i| {
       i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::G)
     }) {
       self.world.spawn(ToggleBlameRequest);
     }
 
-    // Filescope: Cmd+P (Quick Open)
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::P)) {
       self
         .world
@@ -1506,7 +1241,6 @@ impl Coder {
         .toggle(FilescopeMode::Files);
     }
 
-    // Music player: Cmd+M
     if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::M)) {
       let time = self
         .world
@@ -1520,15 +1254,10 @@ impl Coder {
         .toggle_visibility(time);
     }
 
-    // Magic zoom: hold Cmd+E (Screen-Studio-style).
-    //
-    // Held-key, not toggle: matches the codelord "held-key modality"
-    // doctrine (like Cmd+Shift+Space for voice). Emit the command only on
+    // Held-key, not toggle: matches the "held-key modality" doctrine
+    // (like Cmd+Shift+Space for voice). Emit the command only on
     // transition to avoid spamming Messages every frame; retarget the
     // camera center each frame while held so the zoom follows the cursor.
-    //
-    // Hotkey is hardcoded; user-configurable binding deferred to a later
-    // PR (tracked alongside the broader keybinds UI work).
     let (want_engage, cursor) = ctx.input(|i| {
       let held = i.modifiers.command && i.key_down(egui::Key::E);
       let cursor = i.pointer.hover_pos().map(|p| (p.x, p.y));
@@ -1550,121 +1279,6 @@ impl Coder {
     }
   }
 
-  /// Render header separator with optional voice progress bar.
-  fn render_header_separator(&mut self, ui: &mut egui::Ui) {
-    let rect = ui.max_rect();
-    let separator_y = rect.bottom() - 1.0;
-
-    // Codelord colors
-    const GREEN_100: egui::Color32 = egui::Color32::from_rgb(204, 253, 62);
-    const GREEN_200: egui::Color32 = egui::Color32::from_rgb(6, 208, 1);
-    const RED_100: egui::Color32 = egui::Color32::from_rgb(221, 3, 3);
-
-    // Base separator line (always visible)
-    ui.painter().line_segment(
-      [
-        egui::pos2(rect.left(), separator_y),
-        egui::pos2(rect.right(), separator_y),
-      ],
-      egui::Stroke::new(1.0_f32, egui::Color32::from_gray(30)),
-    );
-
-    // Get voice status from ECS resource (pure ECS, no Arc<Mutex>)
-    let (status, processing_start_time) = self
-      .world
-      .get_resource::<VoiceResource>()
-      .map(|v| (v.visualizer_status, v.processing_start_time))
-      .unwrap_or((VisualizerStatus::Idle, 0));
-
-    // Check global loading state
-    let (is_global_loading, is_global_completed, loading_start_time) = self
-      .world
-      .get_resource::<GlobalLoading>()
-      .map(|l| (l.is_loading(), l.is_completed(), l.start_time))
-      .unwrap_or((false, false, 0));
-
-    match status {
-      VisualizerStatus::Processing => {
-        let now = std::time::SystemTime::now()
-          .duration_since(std::time::UNIX_EPOCH)
-          .unwrap()
-          .as_millis() as u64;
-
-        let elapsed_ms = now.saturating_sub(processing_start_time);
-        let elapsed_secs = elapsed_ms as f32 / 1000.0;
-
-        let k = 0.5;
-        let progress = (1.0 - (-k * elapsed_secs).exp()).min(0.95);
-        let progress_width = rect.width() * progress;
-
-        let progress_rect = egui::Rect::from_min_size(
-          egui::pos2(rect.left(), separator_y),
-          egui::vec2(progress_width, 2.0),
-        );
-
-        ui.painter().rect_filled(progress_rect, 0.0, GREEN_100);
-      }
-      VisualizerStatus::Success => {
-        let progress_rect = egui::Rect::from_min_size(
-          egui::pos2(rect.left(), separator_y),
-          egui::vec2(rect.width(), 2.0),
-        );
-
-        ui.painter().rect_filled(progress_rect, 0.0, GREEN_200);
-      }
-      VisualizerStatus::Error => {
-        let progress_rect = egui::Rect::from_min_size(
-          egui::pos2(rect.left(), separator_y),
-          egui::vec2(rect.width(), 2.0),
-        );
-
-        ui.painter().rect_filled(progress_rect, 0.0, RED_100);
-      }
-      _ if is_global_completed => {
-        // Show full bar when completed (100%)
-        let progress_rect = egui::Rect::from_min_size(
-          egui::pos2(rect.left(), separator_y),
-          egui::vec2(rect.width(), 2.0),
-        );
-
-        ui.painter().rect_filled(progress_rect, 0.0, GREEN_200);
-
-        if let Some(mut anims) =
-          self.world.get_resource_mut::<ContinuousAnimations>()
-        {
-          anims.set_loading_bar_active();
-        }
-      }
-      _ if is_global_loading => {
-        let now = std::time::SystemTime::now()
-          .duration_since(std::time::UNIX_EPOCH)
-          .unwrap()
-          .as_millis() as u64;
-
-        let elapsed_ms = now.saturating_sub(loading_start_time);
-        let elapsed_secs = elapsed_ms as f32 / 1000.0;
-
-        let k = 0.5;
-        let progress = (1.0 - (-k * elapsed_secs).exp()).min(0.95);
-        let progress_width = rect.width() * progress;
-
-        let progress_rect = egui::Rect::from_min_size(
-          egui::pos2(rect.left(), separator_y),
-          egui::vec2(progress_width, 2.0),
-        );
-
-        ui.painter().rect_filled(progress_rect, 0.0, GREEN_100);
-
-        if let Some(mut anims) =
-          self.world.get_resource_mut::<ContinuousAnimations>()
-        {
-          anims.set_loading_bar_active();
-        }
-      }
-      _ => {}
-    }
-  }
-
   /// Handle toast action button clicks.
   fn handle_toast_action(&mut self, action_id: &str) {
     match action_id {
@@ -1677,14 +1291,12 @@ impl Coder {
           model_state.start_download();
         }
 
-        // Start global loading indicator
         if let Some(mut loading) =
           self.world.get_resource_mut::<GlobalLoading>()
         {
           loading.start(LoadingTask::Network);
         }
 
-        // Spawn download in background
         let download_rx = codelord_sdk::voice::spawn_download();
 
         self.voice_model_download_rx = Some(download_rx);
@@ -1703,6 +1315,7 @@ impl Coder {
   ) -> bool {
     let Some(storage) = cc.storage else {
       log::debug!("[Session] No storage available");
+
       return false;
     };
 
@@ -1711,22 +1324,10 @@ impl Coder {
       crate::session::SESSION_KEY,
     ) else {
       log::debug!("[Session] No saved session found");
+
       return false;
     };
 
     session.apply_to_world(world)
-  }
-}
-
-pub mod radius {
-  use eframe::egui;
-
-  pub fn symmetric(north: u8, south: u8) -> egui::CornerRadius {
-    egui::CornerRadius {
-      nw: north,
-      ne: north,
-      sw: south,
-      se: south,
-    }
   }
 }

@@ -216,10 +216,6 @@ impl SqlitePreviewState {
 // Events (ECS Components for request-based communication)
 // ============================================================================
 
-/// Request to toggle SQLite preview visibility for the active file.
-#[derive(Component, Debug, Clone, Copy, Default)]
-pub struct ToggleSqlitePreviewRequest;
-
 /// Request to select a table by its index in the tables list.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct SelectTableRequest(
@@ -277,10 +273,7 @@ pub enum SqliteQuery {
     page_size: usize,
   },
   /// Execute a custom SQL query.
-  ExecuteSql(
-    /// The SQL query string to execute.
-    String,
-  ),
+  ExecuteSql(String),
 }
 
 /// Query result received from the async SQLite worker.
@@ -398,11 +391,13 @@ pub fn poll_sqlite_results_system(world: &mut World) {
             let table_name = state.tables[0].name.clone();
             let page = state.current_page;
             let page_size = state.page_size;
+
             let _ = tx.send(SqliteQuery::LoadTableData {
               table: table_name,
               page,
               page_size,
             });
+
             state.is_loading = true;
           }
         }
@@ -489,10 +484,12 @@ pub fn dispatch_sqlite_queries_system(world: &mut World) {
         "[SQLite] Executing custom SQL: {}",
         custom_sql.chars().take(50).collect::<String>()
       );
+
       Some(SqliteQuery::ExecuteSql(custom_sql))
     } else if selected_table.is_some() {
       if let Some(name) = table_name {
         log::info!("[SQLite] Loading table data: {name}");
+
         Some(SqliteQuery::LoadTableData {
           table: name,
           page,

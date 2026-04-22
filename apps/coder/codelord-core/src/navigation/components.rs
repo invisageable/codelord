@@ -46,7 +46,7 @@ impl FileEntry {
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Expanded;
 
-/// Marker for selected entry.
+/// Marker for the selected entry in the explorer tree.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Selected;
 
