@@ -35,7 +35,18 @@ JOiN THE DEVOLUTiON.
 | PRESENTER     | ✔           | x           | x                   | x             |
 | EASTER EGGS   | ✔           | x           | x                   | x             |
 
+## install.
+
+  ```sh
+  curl -fsSL                                         
+  https://raw.githubusercontent.com/compilords/codelord/main/tasks/install.sh | sh
+  ```
+
+  NOTE: WE ARE LOOKiNG FOR LiNUX AND WiNDOWS WiZARDS TO HELP US PORT THE DEVOLUTiON TO EVERY PLATFORM. iF YOU WANT TO HELP, CHECK THE [CONTRiBUTiNG](#contributing) SECTiON.
+
 ## builtin features.
+
+> *The most beautiful text editor you ever seen becomes real.*
 
 **-filescope**
 
@@ -83,6 +94,12 @@ iF A NEW PROGRAMMiNG LANGUAGE APPEARS WiTHOUT iTS OWN ENViRONMENT, iT'S ALREADY 
 ## contributing.
 
 WE LOVE CONTRiBUTORS. THiS iS A PLAYGROUND FOR COMPiLER __NERDS__, FRONTEND __HACKERS__, AND __CREATIVE__.    
+    
+WE ESPECiALLY NEED HELP WiTH:
+
+  - CROSS-PLATFORM — *bringind codelord to `linux` and `windows`.*
+  - OS-LiKE SYSTEM — *expanding the limit of the `gpu` renderer.*
+  - Ai iNTEGRATiON — *deepening the `ai` partner capabilities.*
 
 FEEL FREE TO OPEN AN iSSUE iF YOU WANT TO CONTRiBUTE OR COME TO SAY HELLO ON [discord](https://discord.gg/JaNc4Nk5xw). ALSO YOU CAN CONTACT US AT `echo -n 'dGhlQGNvbXBpbG9yZHMuaG91c2U=' | base64 --decode`.   
 
