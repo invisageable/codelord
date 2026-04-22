@@ -1,3 +1,5 @@
+use codelord_protocol::compilation::Stage;
+
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 
@@ -747,21 +749,25 @@ pub struct PositionWindowRightHalfRequest;
 // ============================================================================
 
 /// Event: request to compile playground source code.
+///
+/// The `stage` field uses the protocol's [`Stage`] enum directly so
+/// there's no lossy u8 round-trip between the ECS producer and the SDK
+/// consumer.
 #[derive(Component, Debug, Clone)]
 pub struct CompileRequest {
   /// Source code to compile.
   pub source: String,
   /// Target for compilation (e.g., "native", "wasm").
   pub target: String,
-  /// Stage to compile up to (inclusive): 0=Tokens, 1=Tree, 2=SIR, 3=Asm.
-  pub stage: u8,
+  /// Stage to compile up to (inclusive).
+  pub stage: Stage,
 }
 
 impl CompileRequest {
   pub fn new(
     source: impl Into<String>,
     target: impl Into<String>,
-    stage: u8,
+    stage: Stage,
   ) -> Self {
     Self {
       source: source.into(),

@@ -15,6 +15,7 @@ codelord-core = { workspace = true }
 codelord-git = { workspace = true }
 codelord-i18n = { workspace = true }
 codelord-language = { workspace = true }
+codelord-protocol = { workspace = true }
 codelord-voice = { workspace = true }
 
 # zo compiler runtime for native UI rendering.

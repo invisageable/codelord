@@ -8,7 +8,6 @@ pub mod focused;
 pub mod hovered;
 pub mod metric;
 pub mod modified;
-pub mod selected;
 
 // Re-export commonly used items
 pub use active::Active;
@@ -19,4 +18,3 @@ pub use focused::Focused;
 pub use hovered::Hovered;
 pub use metric::{Metric, MetricUnit};
 pub use modified::Modified;
-pub use selected::Selected;

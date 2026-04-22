@@ -19,3 +19,21 @@ pub use resources::{
   TerminalBridges, TerminalConfig, TerminalId, TerminalIdCounter,
   TerminalRegistry, TerminalTabOrderCounter,
 };
+
+/// Insert terminal resources.
+pub fn install(world: &mut crate::ecs::world::World) {
+  world.insert_resource(TerminalIdCounter::default());
+  world.insert_resource(TerminalTabOrderCounter::default());
+  world.insert_resource(TerminalRegistry::default());
+  world.insert_resource(TerminalBridges::default());
+}
+
+/// Register terminal systems.
+pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
+  schedule.add_systems((
+    systems::new_terminal_system,
+    systems::new_terminal_tab_system,
+    systems::close_terminal_system,
+    systems::activate_terminal_system,
+  ));
+}

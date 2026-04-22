@@ -1,4 +1,4 @@
-use crate::page::components::{Page, SlideDirection};
+use crate::page::components::{Page, TransitionDirection};
 
 use bevy_ecs::message::Message;
 use bevy_ecs::resource::Resource;
@@ -31,22 +31,22 @@ pub struct PageTransition {
   /// Elapsed time
   pub elapsed: f32,
   /// The direction of the slide
-  pub direction: SlideDirection,
+  pub direction: TransitionDirection,
 }
 
 impl PageTransition {
   pub fn new(from: Page, to: Page) -> Self {
     // Determine slide direction
     let direction = match (from, to) {
-      (Page::Welcome, Page::Editor) => SlideDirection::Left,
-      (Page::Editor, Page::Playground) => SlideDirection::Left,
-      (Page::Playground, Page::Presenter) => SlideDirection::Left,
-      (Page::Presenter, Page::Welcome) => SlideDirection::Left,
-      (Page::Editor, Page::Welcome) => SlideDirection::Right,
-      (Page::Playground, Page::Editor) => SlideDirection::Right,
-      (Page::Presenter, Page::Playground) => SlideDirection::Right,
-      (Page::Welcome, Page::Presenter) => SlideDirection::Right,
-      _ => SlideDirection::Left,
+      (Page::Welcome, Page::Editor) => TransitionDirection::Left,
+      (Page::Editor, Page::Playground) => TransitionDirection::Left,
+      (Page::Playground, Page::Presenter) => TransitionDirection::Left,
+      (Page::Presenter, Page::Welcome) => TransitionDirection::Left,
+      (Page::Editor, Page::Welcome) => TransitionDirection::Right,
+      (Page::Playground, Page::Editor) => TransitionDirection::Right,
+      (Page::Presenter, Page::Playground) => TransitionDirection::Right,
+      (Page::Welcome, Page::Presenter) => TransitionDirection::Right,
+      _ => TransitionDirection::Left,
     };
 
     Self {
@@ -60,11 +60,13 @@ impl PageTransition {
   }
 
   /// Update the animation progress
+  ///
+  /// Return `true` if animation is complete.
   pub fn update(&mut self, delta: f32) -> bool {
     self.elapsed += delta;
     self.progress = (self.elapsed / self.duration).min(1.0);
 
-    self.progress >= 1.0 // return true if animation is complete
+    self.progress >= 1.0
   }
 
   /// Get the eased progress (smooth in-out)

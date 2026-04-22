@@ -209,11 +209,17 @@ fn show_output_column(ui: &mut egui::Ui, world: &mut World) {
           // Get source code from active playground tab.
           let source = get_active_source(world);
           if !source.is_empty() {
-            // Map stage index to protocol stage.
-            // In Templating mode, stage 3 should send Ui (4), not Asm (3).
+            use codelord_protocol::compilation::Stage;
+
+            // Map stage index to protocol stage. In Templating mode, slot
+            // 3 means Ui (HTML output), not Asm.
             let protocol_stage = match (selected_stage, mode) {
-              (3, PlaygroundMode::Templating) => 4, // Ui
-              _ => selected_stage as u8,
+              (0, _) => Stage::Tokens,
+              (1, _) => Stage::Tree,
+              (2, _) => Stage::Sir,
+              (3, PlaygroundMode::Programming) => Stage::Asm,
+              (3, PlaygroundMode::Templating) => Stage::Ui,
+              _ => Stage::Tokens,
             };
             world.spawn(CompileRequest::new(source, "native", protocol_stage));
           }

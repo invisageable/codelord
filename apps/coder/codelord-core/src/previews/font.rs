@@ -63,3 +63,17 @@ impl FontPreviewState {
     self.enabled && self.current_file.as_deref() == Some(file)
   }
 }
+
+/// Returns true if `path` has a supported font extension.
+pub fn accepts(path: &Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| {
+      matches!(
+        ext.to_lowercase().as_str(),
+        "ttf" | "otf" | "woff" | "woff2"
+      )
+    })
+    .unwrap_or(false)
+}

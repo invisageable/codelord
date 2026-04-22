@@ -14,10 +14,8 @@ use crate::components::waveform;
 
 use codelord_core::animation::components::DeltaTime;
 use codelord_core::animation::resources::ContinuousAnimations;
-use codelord_core::audio::resources::{MusicPlayerState, Playlist};
-use codelord_core::audio::{
-  get_music_snapshot, get_visualizer, music_play, music_set_repeat,
-  music_set_volume,
+use codelord_core::audio::resources::{
+  AudioDispatcher, MusicPlayerState, Playlist,
 };
 use codelord_core::ecs::world::World;
 use codelord_core::icon::components::{Icon, Player};
@@ -133,6 +131,11 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
 
 /// Show play/pause, prev, next, volume, and repeat controls.
 fn show_playback_controls(ui: &mut egui::Ui, world: &mut World) {
+  let audio = world
+    .get_resource::<AudioDispatcher>()
+    .copied()
+    .unwrap_or_default();
+
   // Extract values first, then drop the borrow.
   let (is_playing, is_muted, is_repeat) = {
     let state = world.get_resource::<MusicPlayerState>();
@@ -168,8 +171,15 @@ fn show_playback_controls(ui: &mut egui::Ui, world: &mut World) {
   if play_btn.clicked() {
     log::debug!("event:click:play-pause:music-player");
 
+    // Snapshot the playlist so the mut borrow of MusicPlayerState
+    // doesn't collide with the Playlist read.
+    let playlist = world
+      .get_resource::<Playlist>()
+      .cloned()
+      .unwrap_or_default();
+
     if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>() {
-      state.toggle_playback();
+      state.toggle(&audio, &playlist);
     }
   }
 
@@ -199,7 +209,7 @@ fn show_playback_controls(ui: &mut egui::Ui, world: &mut World) {
     && let Some(mut state) = world.get_resource_mut::<MusicPlayerState>()
   {
     state.toggle_mute();
-    music_set_volume(state.volume);
+    audio.music_set_volume(state.volume);
   }
 
   // Previous button (flipped next icon).
@@ -265,14 +275,19 @@ fn show_playback_controls(ui: &mut egui::Ui, world: &mut World) {
   {
     state.is_repeat = !state.is_repeat;
 
-    music_set_repeat(state.is_repeat);
+    audio.music_set_repeat(state.is_repeat);
   }
 }
 
 /// Show current time and total duration.
 fn show_time_display(ui: &mut egui::Ui, world: &mut World) {
+  let audio = world
+    .get_resource::<AudioDispatcher>()
+    .copied()
+    .unwrap_or_default();
+
   // Update snapshot from audio system.
-  if let Some(snapshot) = get_music_snapshot()
+  if let Some(snapshot) = audio.music_snapshot()
     && let Some(mut state) = world.get_resource_mut::<MusicPlayerState>()
   {
     state.update_from_snapshot(&snapshot);
@@ -318,12 +333,17 @@ fn show_time_display(ui: &mut egui::Ui, world: &mut World) {
 
 /// Show the waveform visualization.
 fn show_waveform(ui: &mut egui::Ui, world: &mut World) {
+  let audio = world
+    .get_resource::<AudioDispatcher>()
+    .copied()
+    .unwrap_or_default();
+
   // Acquire visualizer if needed (mutable access first).
   if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>()
     && state.waveform.is_none()
     && state.is_playing
   {
-    state.waveform = get_visualizer();
+    state.waveform = audio.music_visualizer();
   }
 
   // Now read state for display.
@@ -551,7 +571,7 @@ fn show_playlist(ui: &mut egui::Ui, world: &mut World) {
 
   // Store paths for click handling.
   let paths = entries.iter().map(|e| e.path.clone()).collect::<Vec<_>>();
-  let clicked_idx = std::cell::Cell::new(None);
+  let selected_idx = std::cell::Cell::new(None);
 
   // Disable row stroke for cleaner look.
   ui.style_mut().visuals.widgets.noninteractive.bg_stroke = egui::Stroke::NONE;
@@ -649,17 +669,23 @@ fn show_playlist(ui: &mut egui::Ui, world: &mut World) {
         // Handle row double-click.
         let response = row.response();
         if response.double_clicked() {
-          clicked_idx.set(Some(idx));
+          selected_idx.set(Some(idx));
         }
       });
     });
 
   // Handle click outside table to avoid borrow conflicts.
-  if let Some(idx) = clicked_idx.get()
+  if let Some(idx) = selected_idx.get()
     && let Some(path) = paths.get(idx)
   {
     log::debug!("Playing track: {}", path.display());
-    music_play(path.clone());
+
+    let audio = world
+      .get_resource::<AudioDispatcher>()
+      .copied()
+      .unwrap_or_default();
+
+    audio.music_play(path.clone());
 
     if let Some(mut playlist) = world.get_resource_mut::<Playlist>() {
       playlist.current_index = Some(idx);

@@ -85,3 +85,8 @@ impl GlobalLoading {
     self.completed_time = 0;
   }
 }
+
+/// Insert the global loading indicator resource.
+pub fn install(world: &mut crate::ecs::world::World) {
+  world.insert_resource(GlobalLoading::default());
+}

@@ -25,3 +25,35 @@ pub use sqlite::{
 };
 pub use svg::SvgPreviewState;
 pub use xls::XlsPreviewState;
+
+/// Insert preview-related resources (HTML, Markdown, CSV, PDF, SQLite,
+/// XLS, Font, SVG).
+pub fn install(world: &mut crate::ecs::world::World) {
+  world.insert_resource(HtmlPreviewState::default());
+  world.insert_resource(MarkdownPreviewState::default());
+  world.insert_resource(CsvPreviewState::default());
+  world.insert_resource(PdfPreviewState::default());
+  world.insert_resource(PdfConnection::default());
+  world.insert_resource(PdfPageCache::default());
+  world.insert_resource(PdfTextCache::default());
+  world.insert_resource(PdfSelection::default());
+  world.insert_resource(SqlitePreviewState::new());
+  world.insert_resource(SqliteConnection::default());
+  world.insert_resource(XlsPreviewState::default());
+  world.insert_resource(FontPreviewState::default());
+  world.insert_resource(SvgPreviewState::default());
+}
+
+/// Register preview polling systems (SQLite + PDF async round-trips).
+pub fn register_systems(schedule: &mut crate::ecs::schedule::Schedule) {
+  schedule.add_systems((
+    poll_sqlite_results_system,
+    dispatch_sqlite_queries_system,
+    close_sqlite_connection_system,
+  ));
+  schedule.add_systems((
+    poll_pdf_results_system,
+    dispatch_pdf_queries_system,
+    close_pdf_connection_system,
+  ));
+}

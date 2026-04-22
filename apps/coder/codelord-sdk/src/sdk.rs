@@ -45,6 +45,7 @@
 use codelord_protocol::event::ServerEvent;
 use codelord_protocol::voice::dto::InterpretRequest;
 
+use flume::Receiver;
 use futures::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio::runtime::Handle;
@@ -83,6 +84,7 @@ impl Sdk {
     let server_process =
       if Self::blocking_health_check(&base_url, &http_client, &runtime) {
         log::info!("[SDK] Server already running on port 1337");
+
         None
       } else {
         match Self::spawn_server() {
@@ -96,10 +98,11 @@ impl Sdk {
               Duration::from_secs(2),
             ) {
               log::info!("[SDK] Server started successfully");
+
               Some(child)
             } else {
               log::warn!("[SDK] Server spawn timeout, killing process");
-              // Note: child is moved, we need to handle this differently
+
               None
             }
           }
@@ -107,6 +110,7 @@ impl Sdk {
             log::warn!(
               "[SDK] Could not spawn server process - functionality limited"
             );
+
             None
           }
         }
@@ -126,7 +130,6 @@ impl Sdk {
   fn spawn_server() -> Option<Child> {
     let exe_path = std::env::current_exe().ok()?;
     let exe_dir = exe_path.parent()?;
-
     let mut binary_paths = vec![exe_dir.join("codelord-server")];
 
     // Search opposite build profile (debug ↔ release)
@@ -150,6 +153,7 @@ impl Sdk {
       {
         Ok(child) => {
           log::info!("[SDK] Spawned server from: {}", binary.display());
+
           return Some(child);
         }
         Err(error) => {
@@ -157,6 +161,7 @@ impl Sdk {
             "[SDK] Failed to spawn from {}: {error}",
             binary.display()
           );
+
           continue;
         }
       }
@@ -164,6 +169,7 @@ impl Sdk {
 
     log::error!("[SDK] Could not find codelord-server binary");
     log::error!("[SDK] Tried paths: {binary_paths:?}");
+
     None
   }
 
@@ -264,9 +270,7 @@ impl Sdk {
   ///
   /// Returns a channel receiver that yields ServerEvent messages.
   /// The WebSocket connection runs in a background task.
-  pub async fn connect_events(
-    &self,
-  ) -> Result<flume::Receiver<ServerEvent>, String> {
+  pub async fn connect_events(&self) -> Result<Receiver<ServerEvent>, String> {
     let ws_url = self.base_url.replace("http://", "ws://");
     let url = format!("{ws_url}/rpc/connect");
 
@@ -286,6 +290,7 @@ impl Sdk {
               Ok(event) => {
                 if tx.send_async(event).await.is_err() {
                   log::debug!("[SDK] Event channel closed, stopping");
+
                   break;
                 }
               }
@@ -296,10 +301,12 @@ impl Sdk {
           }
           Ok(Message::Close(_)) => {
             log::info!("[SDK] WebSocket closed by server");
+
             break;
           }
           Err(e) => {
             log::error!("[SDK] WebSocket error: {e}");
+
             break;
           }
           _ => {} // Ignore ping/pong/binary
@@ -361,40 +368,29 @@ impl Sdk {
   /// Sends a compilation request to the server.
   ///
   /// The server will compile the source and stream events via WebSocket.
-  /// The `stage` parameter controls which stage to compile up to (inclusive):
-  /// - 0: Tokens
-  /// - 1: Tree
-  /// - 2: SIR
-  /// - 3: Asm (Programming mode)
-  /// - 4: Ui (Templating mode)
-  pub fn compile(&self, source: String, target: String, stage: u8) {
+  /// `stage` picks the last stage to run (inclusive) — see
+  /// [`codelord_protocol::compilation::Stage`].
+  pub fn compile(
+    &self,
+    source: String,
+    target: String,
+    stage: codelord_protocol::compilation::Stage,
+  ) {
     let http_client = self.http_client.clone();
     let base_url = self.base_url.clone();
 
-    let stage_name = match stage {
-      0 => "Tokens",
-      1 => "Tree",
-      2 => "Sir",
-      3 => "Asm",
-      4 => "Ui",
-      _ => "Tokens",
-    };
-
-    log::debug!("[SDK] Sending compile request (stage: {stage_name})");
+    log::debug!("[SDK] Sending compile request (stage: {stage:?})");
 
     self.runtime.spawn(async move {
       let url = format!("{base_url}/playground/compile");
 
-      match http_client
-        .post(&url)
-        .json(&sonic_rs::json!({
-          "source": source,
-          "target": target,
-          "stage": stage_name
-        }))
-        .send()
-        .await
-      {
+      let body = codelord_protocol::compilation::CompileRequest {
+        source,
+        target,
+        stage,
+      };
+
+      match http_client.post(&url).json(&body).send().await {
         Ok(response) => {
           log::debug!("[SDK] Compile response: {}", response.status());
         }
@@ -412,6 +408,7 @@ impl Sdk {
 
       if let Err(e) = child.kill() {
         log::error!("[SDK] Failed to send kill signal: {e}");
+
         return;
       }
 

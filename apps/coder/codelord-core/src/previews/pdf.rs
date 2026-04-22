@@ -752,3 +752,12 @@ pub fn extract_selected_text(
 
   result
 }
+
+/// Returns true if `path` has a PDF extension.
+pub fn accepts(path: &std::path::Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| ext.eq_ignore_ascii_case("pdf"))
+    .unwrap_or(false)
+}

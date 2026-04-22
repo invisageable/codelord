@@ -2,6 +2,18 @@
 
 use crate::ecs::prelude::*;
 
+/// Outcome of ticking a window animation for one frame.
+#[derive(Debug, Clone, Copy)]
+pub struct WindowAnimationStep {
+  /// Absolute window position (OuterPosition) this frame.
+  pub x: f32,
+  /// Absolute window position (OuterPosition) this frame.
+  pub y: f32,
+  /// `true` on the final frame — the caller should clear the
+  /// animation state and decrement `ActiveAnimations`.
+  pub finished: bool,
+}
+
 /// Shake animation state for window vibration effect.
 #[derive(Debug, Clone)]
 pub struct ShakeAnimation {
@@ -20,6 +32,94 @@ impl ShakeAnimation {
       intensity: 10.0,
       original_x,
       original_y,
+    }
+  }
+
+  /// Advance the shake and return the position this frame.
+  ///
+  /// Oscillates horizontally (and 0.7× vertically) around
+  /// `(original_x, original_y)` using a damped sine, landing back on
+  /// the original position on the final frame.
+  pub fn tick(&self, now: f64) -> WindowAnimationStep {
+    let elapsed = now - self.start_time;
+    let progress = (elapsed / self.duration).min(1.0) as f32;
+
+    if progress >= 1.0 {
+      return WindowAnimationStep {
+        x: self.original_x,
+        y: self.original_y,
+        finished: true,
+      };
+    }
+
+    let frequency = 20.0;
+    let damping = 3.0;
+    let wave = (elapsed * frequency * std::f64::consts::TAU).sin() as f32;
+    let amplitude = self.intensity * (1.0 - progress).powf(damping);
+    let seed = (elapsed * frequency).floor() as u32;
+    let sign_x = if seed.is_multiple_of(2) { 1.0 } else { -1.0 };
+    let sign_y = if seed.is_multiple_of(3) { 1.0 } else { -1.0 };
+
+    WindowAnimationStep {
+      x: self.original_x + wave * amplitude * sign_x,
+      y: self.original_y + wave * amplitude * 0.7 * sign_y,
+      finished: false,
+    }
+  }
+}
+
+/// Smooth window-centering animation state (OutExpo easing).
+#[derive(Debug, Clone, Copy)]
+pub struct CenterWindowAnimation {
+  pub start_time: f64,
+  pub duration: f64,
+  pub start_x: f32,
+  pub start_y: f32,
+  pub end_x: f32,
+  pub end_y: f32,
+}
+
+impl CenterWindowAnimation {
+  /// 400 ms — fast but smooth.
+  pub const DURATION: f64 = 0.4;
+
+  pub fn new(
+    start_time: f64,
+    start_x: f32,
+    start_y: f32,
+    end_x: f32,
+    end_y: f32,
+  ) -> Self {
+    Self {
+      start_time,
+      duration: Self::DURATION,
+      start_x,
+      start_y,
+      end_x,
+      end_y,
+    }
+  }
+
+  /// Advance the centering animation and return the position this frame.
+  pub fn tick(&self, now: f64) -> WindowAnimationStep {
+    let elapsed = now - self.start_time;
+    let progress = (elapsed / self.duration).min(1.0) as f32;
+
+    if progress >= 1.0 {
+      return WindowAnimationStep {
+        x: self.end_x,
+        y: self.end_y,
+        finished: true,
+      };
+    }
+
+    // OutExpo easing: 1 - 2^(-10 * progress).
+    let eased = 1.0 - 2.0_f32.powf(-10.0 * progress);
+
+    WindowAnimationStep {
+      x: self.start_x + (self.end_x - self.start_x) * eased,
+      y: self.start_y + (self.end_y - self.start_y) * eased,
+      finished: false,
     }
   }
 }

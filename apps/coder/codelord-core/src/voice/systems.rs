@@ -1,7 +1,7 @@
 //! Voice control ECS systems.
 
 use crate::animation::components::DeltaTime;
-use crate::audio::resources::MusicPlayerState;
+use crate::audio::resources::{AudioDispatcher, MusicPlayerState, Playlist};
 use crate::ecs::message::Messages;
 use crate::ecs::world::World;
 use crate::events::{
@@ -51,17 +51,20 @@ pub fn voice_toggle_system(
           "[Voice] Model missing, show_toast={}",
           model_state.show_download_toast
         );
+
         continue;
       }
       ModelStatus::Downloading => {
         // Already downloading, ignore toggle
         log::debug!("[Voice] Toggle ignored - model downloading");
+
         continue;
       }
       ModelStatus::Error => {
         // Had an error, prompt again
         model_state.prompt_download();
         log::warn!("[Voice] Model error, prompting download");
+
         continue;
       }
       ModelStatus::Ready => {
@@ -233,14 +236,26 @@ fn execute_voice_action(
       run_compiler_stage(world, 3, PlaygroundMode::Templating);
     }
     "PlayPauseMusic" => {
+      let audio = world
+        .get_resource::<AudioDispatcher>()
+        .copied()
+        .unwrap_or_default();
+
+      // Snapshot the playlist so the mut borrow of MusicPlayerState
+      // doesn't collide with the Playlist read.
+      let playlist = world
+        .get_resource::<Playlist>()
+        .cloned()
+        .unwrap_or_default();
+
       if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>() {
-        state.toggle_playback();
+        state.toggle(&audio, &playlist);
       }
     }
     "TogglePlayer" => {
       let current_time = world
         .get_resource::<DeltaTime>()
-        .map(|t| t.elapsed())
+        .map(|dt| dt.elapsed())
         .unwrap_or(0.0);
 
       if let Some(mut state) = world.get_resource_mut::<MusicPlayerState>() {
@@ -282,14 +297,17 @@ fn run_compiler_stage(world: &mut World, stage: usize, mode: PlaygroundMode) {
     .unwrap_or_default();
 
   if !source.is_empty() {
+    use codelord_protocol::compilation::Stage;
+
     let protocol_stage = match (stage, mode) {
-      (0, _) => 0,
-      (1, _) => 1,
-      (2, _) => 2,
-      (3, PlaygroundMode::Programming) => 3,
-      (3, PlaygroundMode::Templating) => 4,
-      _ => stage as u8,
+      (0, _) => Stage::Tokens,
+      (1, _) => Stage::Tree,
+      (2, _) => Stage::Sir,
+      (3, PlaygroundMode::Programming) => Stage::Asm,
+      (3, PlaygroundMode::Templating) => Stage::Ui,
+      _ => Stage::Tokens,
     };
+
     world.spawn(CompileRequest::new(source, target_str, protocol_stage));
   }
 }

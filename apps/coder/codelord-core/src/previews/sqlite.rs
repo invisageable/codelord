@@ -216,10 +216,6 @@ impl SqlitePreviewState {
 // Events (ECS Components for request-based communication)
 // ============================================================================
 
-/// Request to toggle SQLite preview visibility for the active file.
-#[derive(Component, Debug, Clone, Copy, Default)]
-pub struct ToggleSqlitePreviewRequest;
-
 /// Request to select a table by its index in the tables list.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct SelectTableRequest(
@@ -277,10 +273,7 @@ pub enum SqliteQuery {
     page_size: usize,
   },
   /// Execute a custom SQL query.
-  ExecuteSql(
-    /// The SQL query string to execute.
-    String,
-  ),
+  ExecuteSql(String),
 }
 
 /// Query result received from the async SQLite worker.
@@ -398,11 +391,13 @@ pub fn poll_sqlite_results_system(world: &mut World) {
             let table_name = state.tables[0].name.clone();
             let page = state.current_page;
             let page_size = state.page_size;
+
             let _ = tx.send(SqliteQuery::LoadTableData {
               table: table_name,
               page,
               page_size,
             });
+
             state.is_loading = true;
           }
         }
@@ -489,10 +484,12 @@ pub fn dispatch_sqlite_queries_system(world: &mut World) {
         "[SQLite] Executing custom SQL: {}",
         custom_sql.chars().take(50).collect::<String>()
       );
+
       Some(SqliteQuery::ExecuteSql(custom_sql))
     } else if selected_table.is_some() {
       if let Some(name) = table_name {
         log::info!("[SQLite] Loading table data: {name}");
+
         Some(SqliteQuery::LoadTableData {
           table: name,
           page,
@@ -539,5 +536,38 @@ pub fn close_sqlite_connection_system(world: &mut World) {
     if let Some(mut conn) = world.get_resource_mut::<SqliteConnection>() {
       conn.close();
     }
+  }
+}
+
+/// Returns true if `path` has a SQLite database extension.
+pub fn accepts(path: &std::path::Path) -> bool {
+  path
+    .extension()
+    .and_then(|ext| ext.to_str())
+    .map(|ext| {
+      matches!(ext.to_lowercase().as_str(), "db" | "sqlite" | "sqlite3")
+    })
+    .unwrap_or(false)
+}
+
+/// Spawn the SQLite export dropdown popup (CSV / JSON) and register its
+/// entity in [`crate::popup::resources::PopupResource`].
+pub fn spawn_export_popup(world: &mut crate::ecs::world::World) {
+  use crate::popup::components::{
+    MenuItem, Popup, PopupContent, PopupPosition,
+  };
+  use crate::popup::resources::PopupResource;
+
+  let menu = PopupContent::Menu(vec![
+    MenuItem::new("export_csv", "Export as CSV"),
+    MenuItem::new("export_json", "Export as JSON"),
+  ]);
+
+  let entity = world
+    .spawn(Popup::new(menu).with_position(PopupPosition::Below))
+    .id();
+
+  if let Some(mut popup_res) = world.get_resource_mut::<PopupResource>() {
+    popup_res.sqlite_export_popup = Some(entity);
   }
 }

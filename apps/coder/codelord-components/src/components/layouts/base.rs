@@ -3,7 +3,7 @@ use crate::components::pages::{
 };
 
 use codelord_core::ecs::world::World;
-use codelord_core::page::components::{Page, SlideDirection};
+use codelord_core::page::components::{Page, TransitionDirection};
 use codelord_core::page::resources::PageResource;
 
 use eframe::egui;
@@ -22,10 +22,12 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   let (active_page, transition_data) =
     if let Some(page_res) = world.get_resource::<PageResource>() {
       let active = page_res.active_page;
+
       let trans = page_res
         .transition
         .as_ref()
         .map(|t| (t.from_page, t.to_page, t.eased_progress(), t.direction));
+
       (active, trans)
     } else {
       (Page::Welcome, None)
@@ -43,16 +45,18 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
     // Calculate the positions for the FROM and TO pages based on progress
     // Use round_ui on offsets to prevent unaligned warnings during animation
     let (from_rect, to_rect) = match direction {
-      SlideDirection::Left => {
+      TransitionDirection::Left => {
         let offset = round_ui(-progress * width);
         let from_rect = available_rect.translate(egui::vec2(offset, 0.0));
         let to_rect = from_rect.translate(egui::vec2(width, 0.0));
+
         (from_rect, to_rect)
       }
-      SlideDirection::Right => {
+      TransitionDirection::Right => {
         let offset = round_ui(progress * width);
         let from_rect = available_rect.translate(egui::vec2(offset, 0.0));
         let to_rect = from_rect.translate(egui::vec2(-width, 0.0));
+
         (from_rect, to_rect)
       }
     };

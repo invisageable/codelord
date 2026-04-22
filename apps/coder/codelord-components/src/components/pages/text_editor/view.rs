@@ -1,5 +1,4 @@
 use crate::components::navigation::{breadcrumbs, tabbar};
-#[cfg(not(target_arch = "wasm32"))]
 use crate::components::renderers::pdf;
 use crate::components::renderers::{
   csv_table, font, markdown, sqlite, svg, xls,
@@ -18,7 +17,6 @@ use codelord_core::previews::{
   CsvPreviewState, FontPreviewState, MarkdownPreviewState, SqlitePreviewState,
   SvgPreviewState,
 };
-#[cfg(not(target_arch = "wasm32"))]
 use codelord_core::previews::{
   PageLayout, PdfNavAction, PdfPageCache, PdfPreviewState, PdfSelection,
   PdfTextCache, PdfViewData, PdfZoomAction, extract_selected_text,
@@ -39,7 +37,6 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
   let svg_preview = get_svg_preview_active(world);
   let markdown_preview = get_markdown_preview_state(world);
   let csv_preview = get_csv_preview_state(world);
-  #[cfg(not(target_arch = "wasm32"))]
   let pdf_preview = get_pdf_preview_active(world);
   let sqlite_preview = get_sqlite_preview_active(world);
   let xls_preview = get_xls_preview_active(world);
@@ -71,7 +68,6 @@ pub fn show(ui: &mut egui::Ui, world: &mut World) {
       ui.set_height(ui.available_height());
 
       // Show preview if enabled, otherwise show code editor
-      #[cfg(not(target_arch = "wasm32"))]
       if pdf_preview {
         render_pdf_preview(ui, world);
         return;
@@ -132,7 +128,6 @@ fn get_csv_preview_state(world: &mut World) -> Option<CsvData> {
 }
 
 /// Checks if PDF preview is active.
-#[cfg(not(target_arch = "wasm32"))]
 fn get_pdf_preview_active(world: &mut World) -> bool {
   world
     .get_resource::<PdfPreviewState>()
@@ -142,7 +137,6 @@ fn get_pdf_preview_active(world: &mut World) -> bool {
 
 /// Renders PDF preview with proper orchestration.
 /// Builds view data from resources, calls pure component, processes output.
-#[cfg(not(target_arch = "wasm32"))]
 fn render_pdf_preview(ui: &mut egui::Ui, world: &mut World) {
   // Handle keyboard input first (returns actions, doesn't mutate world)
   let input = pdf::handle_input(ui);
@@ -206,7 +200,6 @@ fn render_pdf_preview(ui: &mut egui::Ui, world: &mut World) {
 }
 
 /// Builds PdfViewData from world resources.
-#[cfg(not(target_arch = "wasm32"))]
 fn build_pdf_view_data(world: &World) -> Option<PdfViewData<'_>> {
   let state = world.get_resource::<PdfPreviewState>()?;
   let file = state.current_file.as_ref()?;
@@ -232,7 +225,6 @@ fn build_pdf_view_data(world: &World) -> Option<PdfViewData<'_>> {
 }
 
 /// Applies navigation action to PDF state.
-#[cfg(not(target_arch = "wasm32"))]
 fn apply_nav_action(world: &mut World, action: Option<PdfNavAction>) {
   let Some(action) = action else { return };
   let Some(mut state) = world.get_resource_mut::<PdfPreviewState>() else {
@@ -247,7 +239,6 @@ fn apply_nav_action(world: &mut World, action: Option<PdfNavAction>) {
 }
 
 /// Applies zoom action to PDF state.
-#[cfg(not(target_arch = "wasm32"))]
 fn apply_zoom_action(world: &mut World, action: Option<PdfZoomAction>) {
   let Some(action) = action else { return };
   let Some(mut state) = world.get_resource_mut::<PdfPreviewState>() else {
@@ -262,7 +253,6 @@ fn apply_zoom_action(world: &mut World, action: Option<PdfZoomAction>) {
 }
 
 /// Processes drag events for text selection.
-#[cfg(not(target_arch = "wasm32"))]
 fn process_drag_event(
   world: &mut World,
   event: codelord_core::previews::PdfDragEvent,
