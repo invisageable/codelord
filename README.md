@@ -14,9 +14,9 @@
 
 ## about.
 
-codelord iS A PROGRAMMABLE CODE EDiTOR OS-LiKE FOR DEVS. RECLAiM THE DEVELOPER'S FLOW WiTH A HiGH-PERFORMANCE, GPU-NATiVE CODE EDiTOR THAT RESPECTS YOUR MACHiNE, YOUR PRiVACY, AND YOUR THiNKiNG PROCESS.   
+codelord iS A PROGRAMMABLE TEXT EDiTOR OS-LiKE FOR DEVS. RECLAiM THE DEVELOPER'S FLOW WiTH A HiGH-PERFORMANCE, GPU-NATiVE TEXT EDiTOR THAT RESPECTS YOUR MACHiNE, YOUR PRiVACY, AND YOUR THiNKiNG PROCESS.   
 
-codelord iS FULL NATiVE CODE EDiTOR WiTHOUT electron BLOAT AND WiTH A MiNiMAL MEMORY FOOTPRiNT. THE TELEMETRY iSN'T FOR US BUT FOR YOU. iT WiLL HELPS YOU TO BECOME MORE EFFiCiENT iN PROGRAMMiNG.
+codelord iS FULL NATiVE TEXT EDiTOR WiTHOUT electron BLOAT AND WiTH A MiNiMAL MEMORY FOOTPRiNT. THE TELEMETRY iSN'T FOR US BUT FOR YOU. iT WiLL HELPS YOU TO BECOME MORE EFFiCiENT iN PROGRAMMiNG.
 
 codelord ISN'T JUST ANOTHER vscode FORK OR CLONE — iT'S A REiMAGiNATiON. NATiVE GPU RENDERiNG, REPL-POWERED WORKFLOWS, REAL-TiME COLLABORATiON, AND A PLUGiN RUNTiME GiVE YOU SUPERPOWERS iN A CLEAN, MiNiMAL iNTERFACE. ALL WHiLE STAYiNG LiGHT, LOCAL-FiRST, AND PRiVACY-RESPECTiNG.
 
@@ -30,10 +30,10 @@ JOiN THE DEVOLUTiON.
 | SiZE          | 34 MB       | 321 MB      | 458 MB              | 664 MB        |
 | UX/Ui         | GAME-LiKE   | STANDARD    | STANDARD            | STANDARD      |
 | Ai            | Ai PARTNER  | Ai WRAPPER  | Ai WRAPPER          | Ai COMPLETiON |
-| PLAYGROUND    | ✅          | ❌          | ❌                  | ❌            |
-| VOiCE CONTROL | ✅          | ❌          | ❌                  | ❌            |
-| PRESENTER     | ✅          | ❌          | ❌                  | ❌            |
-| EASTER EGGS   | ✅          | ❌          | ❌                  | ❌            |
+| zo PLAYGROUND | ✔           | x           | x                   | x             |
+| VOiCE CONTROL | ✔           | x           | x                   | x             |
+| PRESENTER     | ✔           | x           | x                   | x             |
+| EASTER EGGS   | ✔           | x           | x                   | x             |
 
 ## builtin features.
 
@@ -45,9 +45,40 @@ iNSPIRED BY ViM'S TELESCOPE, FiLESCOPE iT'S AN ELEGANT FiLE FINDER THAT'S LET YO
 
 **-magic-zoom**
 
-![codelord-interface-overview](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-magic-zoom.gif)
+![codelord-magic-zoom](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-magic-zoom.gif)
 
 ZOOM-iN AND ZOOM-OUT iN A JiT WAY — USE `CMD+E` TO ENABLE THE MAGIC ZOOM. VERY USEFUL FOR DEMOS, TALKS AND SO ON.
+
+**-navigation**
+
+![codelord-navigation](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-navigation.gif)
+
+A NOiCE WAY TO NAViGATE BETWEEN APPS QUiCKLY. codelord FEELS LESS LiKE A WiNDOW AND MORE LiKE A WORKSPACE DiRECTLY ON YOUR GPU.
+
+**-file-tree-iconography**
+
+![codelord-file-tree-iconography](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-file-tree-iconography.gif)
+
+A REFiNED ViSUAL HiERARCHY. iNSTANTLY iDENTiFY YOUR STACK WiTH A MiNiMALiST, HiGH-CONTRAST iCON SYSTEM DESiGNED FOR SPEED.
+
+**-dark-in-the-light**
+
+![codelord-dark-in-the-light](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-dark-in-the-light.gif)
+
+WHETHER YOU PREFER THE VOiD OR THE CLOUD, THE TRANSiTiON iS SEAMLESS.
+
+**-voice-control**
+
+![codelord-voice-control](./apps/coder/codelord-notes/public/assets/codelord-motion-preview-voice-control.gif)
+
+JUST TALK TO codelord LiKE iS YOUR BUDDY — *"i WOULD LiKE TO DO SOME WORK, LET'S GO TO THE TEXT EDiTOR."*    
+YOU CAN CONTROL THE WHOLE TEXT EDiTOR WiTH YOUR VOiCE.
+
+## why codelord?
+
+codelord WAS ORiGiNALLY BUiLT TO BE THE ULTiMATE HOME FOR THE [zo](https://github.com/invisageable/zo) PROGRAMMiNG LANGUAGE. i WAS BORED BY TRADiTiONAL REPLs AND BLOATED EDiTORs, SO WE BUiLT AN "OS-LiKE EDiTOR" WHERE THE PLAYGROUND AND THE TEXT ARE ONE.   
+
+iF A NEW PROGRAMMiNG LANGUAGE APPEARS WiTHOUT iTS OWN ENViRONMENT, iT'S ALREADY BEHiND. zo DOESN'T JUST GiVE YOU SYNTAX; iT GiVES YOU THE MACHiNE. REMEMBER WHAT zo OFFERS YOU. ENJOY!
 
 ## contributing.
 
