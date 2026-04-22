@@ -128,7 +128,7 @@ use codelord_core::events::{
 };
 use codelord_core::git::components::TabBlame;
 use codelord_core::icon::components::{Arrow, Icon};
-use codelord_core::keyboard::{ClearFocusRequest, FocusRequest, KeyboardFocus};
+use codelord_core::keyboard::{FocusRequest, KeyboardFocus};
 use codelord_core::playground::PlaygroundHoveredSpan;
 use codelord_core::symbol::{
   StickyScrollSettings, SymbolAnchor, SymbolMap, TabSymbols,
@@ -147,6 +147,7 @@ use eframe::egui;
 use egui::text::{LayoutJob, TextFormat};
 use rustc_hash::FxHashMap as HashMap;
 
+use std::any::TypeId;
 use std::hash::{Hash, Hasher};
 
 /// Gutter dimensions and layout configuration.
@@ -309,8 +310,8 @@ pub fn show<M: Component>(
     query_result
   else {
     // Only show instructions for EditorTab, not PlaygroundTab.
-    let is_editor =
-      std::any::TypeId::of::<M>() == std::any::TypeId::of::<EditorTab>();
+    let is_editor = TypeId::of::<M>() == TypeId::of::<EditorTab>();
+
     show_empty_state(ui, world, is_editor);
     return;
   };
@@ -419,7 +420,6 @@ pub fn show<M: Component>(
     .unwrap_or(false);
 
   let mut request_focus = false;
-  let mut clear_focus = false;
   let mut cursor_blink_active = false;
   let mut shimmer_active = false;
 
@@ -467,17 +467,21 @@ pub fn show<M: Component>(
     // Center the target line in viewport.
     let viewport_height = available_rect.height();
     let centered_offset = (target_offset - viewport_height / 2.0).max(0.0);
+
     scroll_area = scroll_area.vertical_scroll_offset(centered_offset);
   }
 
   let scroll_output = scroll_area.show(ui, |ui| {
     let content_width = ui.available_width();
     let available_height = ui.available_height();
+
     // Ensure clickable area covers at least the viewport (for empty files).
     let desired_size =
       egui::vec2(content_width, total_height.max(available_height));
+
     let (response, painter) =
       ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
+
     let rect = response.rect;
 
     if response.clicked() {
@@ -490,12 +494,15 @@ pub fn show<M: Component>(
       rect.min,
       egui::vec2(gutter.gutter_width(), rect.height()),
     );
+
     painter.rect_filled(gutter_rect, 0.0, visuals.faint_bg_color);
 
     // Virtualized rendering: only render visible lines.
     let clip_rect = ui.clip_rect();
+
     let first_visible_row =
       ((clip_rect.min.y - rect.min.y) / line_height).floor() as i32;
+
     let last_visible_row =
       ((clip_rect.max.y - rect.min.y) / line_height).ceil() as i32;
 
@@ -523,13 +530,16 @@ pub fn show<M: Component>(
       // Skip lines above visible area (but still track visual_row).
       if visual_row < first_visible_row - 1 {
         visual_row += 1;
+
         continue;
       }
 
       // Get line text from rope - small allocation per visible line only.
       let line_rope = data.buffer.line(line_idx);
+
       let line_string: String =
         line_rope.map(|l| l.to_string()).unwrap_or_default();
+
       let line_text = line_string.trim_end_matches(&['\n', '\r'][..]);
 
       let y = rect.min.y + visual_row as f32 * line_height;
@@ -553,10 +563,12 @@ pub fn show<M: Component>(
 
       if line_idx == cursor_line {
         let content_x = gutter.content_x(rect.min.x);
+
         let line_rect = egui::Rect::from_min_size(
           egui::pos2(content_x, y),
           egui::vec2(rect.width() - gutter.full_width(), line_height),
         );
+
         painter.rect_stroke(
           line_rect,
           0.0,
@@ -587,6 +599,7 @@ pub fn show<M: Component>(
             egui::pos2(sel_x_start, y),
             egui::pos2(sel_x_end, y + line_height),
           );
+
           painter.rect_filled(sel_rect, 0.0, visuals.selection.bg_fill);
         }
 
@@ -640,6 +653,7 @@ pub fn show<M: Component>(
             let tokens = extractors
               .map(|ext| ext.extract(language, line_text))
               .unwrap_or_default();
+
             line_cache.lines.insert(line_idx, (line_hash, tokens));
             &line_cache.lines.get(&line_idx).unwrap().1
           }
@@ -648,6 +662,7 @@ pub fn show<M: Component>(
           let tokens = extractors
             .map(|ext| ext.extract(language, line_text))
             .unwrap_or_default();
+
           line_cache.lines.insert(line_idx, (line_hash, tokens));
           &line_cache.lines.get(&line_idx).unwrap().1
         };
@@ -657,6 +672,7 @@ pub fn show<M: Component>(
         // For empty lines, compute indent from adjacent non-empty lines.
         let is_empty =
           compute_indent_level(line_text, indent_settings.indent_size) < 0;
+
         let max_indent_for_empty = if is_empty {
           get_empty_line_indent(
             data.buffer,
@@ -692,6 +708,7 @@ pub fn show<M: Component>(
           let colors = color_extractor
             .map(|ext| ext.extract(line_text))
             .unwrap_or_default();
+
           line_color_cache.lines.insert(line_idx, (line_hash, colors));
           &line_color_cache.lines.get(&line_idx).unwrap().1
         }
@@ -700,6 +717,7 @@ pub fn show<M: Component>(
         let colors = color_extractor
           .map(|ext| ext.extract(line_text))
           .unwrap_or_default();
+
         line_color_cache.lines.insert(line_idx, (line_hash, colors));
         &line_color_cache.lines.get(&line_idx).unwrap().1
       };
@@ -709,11 +727,14 @@ pub fn show<M: Component>(
       // Use a fixed ID (not ui.id()) so it can be read outside the scroll area.
       let content_x = gutter.content_x(rect.min.x);
       let hovered_color_id = egui::Id::new(("editor_hovered_color", entity));
+
       if let Some(hover_pos) = ui.input(|i| i.pointer.hover_pos()) {
         for color in line_colors.iter() {
           let color_start_x = content_x + color.column as f32 * char_width;
+
           let color_end_x =
             color_start_x + color.text.chars().count() as f32 * char_width;
+
           let color_rect = egui::Rect::from_min_max(
             egui::pos2(color_start_x, y),
             egui::pos2(color_end_x, y + line_height),
@@ -744,6 +765,7 @@ pub fn show<M: Component>(
       );
 
       let galley_width = galley.rect.width();
+
       painter.galley(
         egui::pos2(gutter.content_x(rect.min.x), y),
         galley,
@@ -887,6 +909,7 @@ pub fn show<M: Component>(
   // Render symbol track on right edge (only if we have symbols).
   let mut scroll_to_line: Option<usize> = None;
   let symbol_map = data.symbol_map();
+
   if !symbol_map.anchors.is_empty() {
     // Pass the full available rect - symbol track calculates its own position.
     ui.scope_builder(egui::UiBuilder::new().max_rect(available_rect), |ui| {
@@ -956,6 +979,7 @@ pub fn show<M: Component>(
     } else {
       data.buffer.len_chars()
     };
+
     events_to_spawn.push(EventToSpawn::SetCursor(char_pos, false));
   }
 
@@ -964,12 +988,13 @@ pub fn show<M: Component>(
     events_to_spawn.push(EventToSpawn::ToggleFold(symbol_idx));
   }
 
-  if ui.input(|i| i.pointer.any_click())
-    && !available_rect
-      .contains(ui.input(|i| i.pointer.hover_pos().unwrap_or_default()))
-  {
-    clear_focus = true;
-  }
+  // Don't clear focus just because a click landed outside the editor
+  // rect. Sibling focus-grabbing widgets (terminal, filescope, …) set
+  // focus to themselves on click via `KeyboardFocus::set`, which
+  // implicitly drops ours. Proactively spawning `ClearFocusRequest`
+  // here races with those `set` calls — the request lands a frame
+  // later and clobbers the new focus, so typing into the terminal
+  // after clicking it would silently do nothing.
 
   if has_focus || request_focus {
     collect_keyboard_events(ui, &mut events_to_spawn);
@@ -992,13 +1017,12 @@ pub fn show<M: Component>(
   // data's borrow ends here (last use was above).
 
   spawn_events(world, entity, events_to_spawn);
-
-  // Update blame animation state (deferred from read phase).
   update_blame_animation(world, entity, cursor_line, blame_entry_for_line);
 
   // Render color tooltip if hovering over a color value.
   // Use the same fixed ID as inside the scroll area.
   let hovered_color_id = egui::Id::new(("editor_hovered_color", entity));
+
   let hovered_color: Option<(ColorInfo, (f32, f32))> =
     ui.memory(|mem| mem.data.get_temp(hovered_color_id));
 
@@ -1020,9 +1044,6 @@ pub fn show<M: Component>(
 
   if request_focus {
     world.spawn(FocusRequest::new(entity));
-  }
-  if clear_focus {
-    world.spawn(ClearFocusRequest);
   }
 
   if cursor_blink_active
@@ -1056,9 +1077,11 @@ fn show_empty_state(
   if !show_instructions {
     // Make full area clickable for double-click to create new tab.
     let response = ui.allocate_rect(available_rect, egui::Sense::click());
+
     if response.double_clicked() {
       world.spawn(codelord_core::events::NewEditorTabRequest);
     }
+
     return;
   }
 
@@ -1077,6 +1100,7 @@ fn show_empty_state(
     ui.id().with("empty_state_bg"),
     egui::Sense::click(),
   );
+
   if response.double_clicked() {
     world.spawn(codelord_core::events::NewEditorTabRequest);
   }
@@ -1115,10 +1139,12 @@ fn render_empty_buffer(
   );
 
   let content_x = gutter.content_x(rect.min.x);
+
   let line_rect = egui::Rect::from_min_size(
     egui::pos2(content_x, y),
     egui::vec2(rect.width() - gutter.full_width(), line_height),
   );
+
   painter.rect_stroke(
     line_rect,
     0.0,
@@ -1139,8 +1165,8 @@ fn render_empty_buffer(
   );
 
   let hint_width = hint_galley.rect.width();
-
   let shimmer = ShimmerAnimation::with_timing(1.0, 50.0).with_intensity(0.6);
+
   let (shimmer_center, _) =
     shimmer.calculate_position_with_pause(time, hint_width, 1.0);
 
@@ -1151,7 +1177,6 @@ fn render_empty_buffer(
 
     let cw = char_galley.rect.width();
     let char_center_x = x_offset + cw * 0.5;
-
     let intensity = shimmer.calculate_intensity(char_center_x, shimmer_center);
 
     let final_color = egui::Color32::from_rgba_unmultiplied(
@@ -1298,7 +1323,6 @@ fn handle_mouse_click(
 
   // Use TextBuffer's O(log n) method instead of O(n) iteration.
   let char_idx = data.buffer.line_col_to_char(clicked_line, clicked_col);
-
   let shift = ui.input(|i| i.modifiers.shift);
 
   events.push(EventToSpawn::SetCursor(char_idx, shift));
@@ -1355,10 +1379,12 @@ fn build_highlighted_galley(
   line_text.hash(&mut hasher);
   line_start.hash(&mut hasher);
   tokens.len().hash(&mut hasher);
+
   let content_hash = hasher.finish();
 
   // Check cache.
   let cache_id = ui.id().with(("galley_cache", line_idx));
+
   let cached: Option<CachedGalley> =
     ui.memory(|mem| mem.data.get_temp(cache_id));
 
@@ -1382,6 +1408,7 @@ fn build_highlighted_galley(
     );
 
     let galley = ui.fonts_mut(|f| f.layout_job(job));
+
     ui.memory_mut(|mem| {
       mem.data.insert_temp(
         cache_id,
@@ -1391,6 +1418,7 @@ fn build_highlighted_galley(
         },
       );
     });
+
     return galley;
   }
 
@@ -1456,6 +1484,7 @@ fn build_highlighted_galley(
     if tok_end > effective_start && effective_start < line_text.len() {
       let token_text =
         &line_text[effective_start..tok_end.min(line_text.len())];
+
       let color = syntax_color(token.kind);
 
       job.append(
@@ -1504,8 +1533,9 @@ fn build_highlighted_galley(
 }
 
 /// Format blame text for gutter display.
+///
+/// Note — Truncate author name if too long.
 fn format_blame_text(author: &str, timestamp: i64) -> String {
-  // Truncate author name if too long
   let author_display = if author.len() > 12 {
     format!("{}…", &author[..11])
   } else {
@@ -1513,6 +1543,7 @@ fn format_blame_text(author: &str, timestamp: i64) -> String {
   };
 
   let time = relative_time(timestamp);
+
   format!("{author_display} · {time}")
 }
 
@@ -1560,6 +1591,7 @@ fn update_blame_animation(
     // Start new animation if we have blame data for this line.
     if let Some((author, timestamp)) = blame_entry {
       let blame_text = format_blame_text(&author, timestamp);
+
       tab_blame.start_line_animation(cursor_line, &blame_text);
     }
   }
@@ -1599,6 +1631,7 @@ fn render_sticky_scroll(
   // Paint background with slight transparency.
   let bg_color = visuals.extreme_bg_color.gamma_multiply(0.95);
   let painter = ui.painter_at(sticky_rect);
+
   painter.rect_filled(sticky_rect, 0.0, bg_color);
 
   // Paint gutter background.
@@ -1606,6 +1639,7 @@ fn render_sticky_scroll(
     sticky_rect.min,
     egui::vec2(gutter.gutter_width(), sticky_height),
   );
+
   painter.rect_filled(gutter_rect, 0.0, visuals.faint_bg_color);
 
   // Render each sticky line.
@@ -1615,12 +1649,12 @@ fn render_sticky_scroll(
 
     // Get line text from buffer.
     let line_rope = data.buffer.line(line_idx);
-    let line_string: String =
-      line_rope.map(|l| l.to_string()).unwrap_or_default();
+    let line_string = line_rope.map(|l| l.to_string()).unwrap_or_default();
     let line_text = line_string.trim_end_matches(&['\n', '\r'][..]);
 
     // Render line number.
     let line_num_color = egui::Color32::from_gray(100);
+
     painter.text(
       egui::pos2(
         gutter.line_number_x(sticky_rect.min.x) + gutter.line_number_width,
@@ -1671,6 +1705,7 @@ fn render_sticky_scroll(
     if response.hovered() {
       // Highlight on hover.
       let hover_color = visuals.selection.bg_fill.linear_multiply(0.2);
+
       painter.rect_filled(line_rect, 0.0, hover_color);
       ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::PointingHand);
     }
@@ -1678,6 +1713,7 @@ fn render_sticky_scroll(
 
   // Draw bottom separator line (same style as divider component).
   let separator_color = visuals.widgets.noninteractive.bg_stroke.color;
+
   painter.line_segment(
     [
       egui::pos2(sticky_rect.min.x, sticky_rect.max.y - 0.5),
@@ -1709,6 +1745,7 @@ fn build_sticky_galley(
         ..Default::default()
       },
     );
+
     return ui.fonts_mut(|f| f.layout_job(job));
   }
 
@@ -1722,6 +1759,7 @@ fn build_sticky_galley(
         ..Default::default()
       },
     );
+
     return ui.fonts_mut(|f| f.layout_job(job));
   }
 
@@ -1753,7 +1791,9 @@ fn build_sticky_galley(
     if tok_end > effective_start && effective_start < line_text.len() {
       let token_text =
         &line_text[effective_start..tok_end.min(line_text.len())];
+
       let color = syntax_color(token.kind);
+
       job.append(
         token_text,
         0.0,
@@ -1787,6 +1827,8 @@ fn build_sticky_galley(
 ///
 /// Returns -1 for empty/whitespace-only lines.
 /// Returns the actual visual column position of first non-whitespace character.
+///
+/// Note — tab aligns to next tab stop.
 fn compute_indent_level(line: &str, tab_size: usize) -> i32 {
   let mut indent = 0usize;
 
@@ -1794,7 +1836,6 @@ fn compute_indent_level(line: &str, tab_size: usize) -> i32 {
     match ch {
       ' ' => indent += 1,
       '\t' => {
-        // Tab aligns to next tab stop
         indent = indent - (indent % tab_size) + tab_size;
       }
       '\n' | '\r' => return -1,  // Empty line
@@ -1830,15 +1871,19 @@ fn find_active_indent_scope(
   let base_indent = if cursor_indent < 0 {
     // Look up for a non-empty line
     let mut found = -1i32;
+
     for i in (0..cursor_line).rev() {
       if let Some(line) = buffer.line(i) {
         let indent = compute_indent_level(&line.to_string(), indent_size);
+
         if indent >= 0 {
           found = indent;
+
           break;
         }
       }
     }
+
     found
   } else {
     cursor_indent
@@ -1868,15 +1913,18 @@ fn find_active_indent_scope(
 
   // Search downward for scope end
   let mut end_line = cursor_line;
+
   for i in (cursor_line + 1)..line_count {
     if let Some(line) = buffer.line(i) {
       let indent = compute_indent_level(&line.to_string(), indent_size);
       // -1 means empty line, continue through it
       if indent >= 0 {
         let level = (indent as usize) / indent_size;
+
         if level < base_level {
           break; // Found scope boundary
         }
+
         end_line = i;
       }
     }
@@ -1900,11 +1948,14 @@ fn get_empty_line_indent(
 
   // Look backward for previous non-empty line.
   let mut prev_indent: Option<usize> = None;
+
   for i in (0..line_idx).rev() {
     if let Some(line) = buffer.line(i) {
       let indent = compute_indent_level(&line.to_string(), indent_size);
+
       if indent >= 0 {
         prev_indent = Some((indent as usize) / indent_size);
+
         break;
       }
     }
@@ -1912,11 +1963,14 @@ fn get_empty_line_indent(
 
   // Look forward for next non-empty line.
   let mut next_indent: Option<usize> = None;
+
   for i in (line_idx + 1)..line_count {
     if let Some(line) = buffer.line(i) {
       let indent = compute_indent_level(&line.to_string(), indent_size);
+
       if indent >= 0 {
         next_indent = Some((indent as usize) / indent_size);
+
         break;
       }
     }
@@ -2011,9 +2065,11 @@ fn render_color_tooltip(
 
   // Measure text width.
   let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+
   let text_galley = ui.fonts_mut(|f| {
     f.layout_no_wrap(color.text.clone(), font_id.clone(), egui::Color32::WHITE)
   });
+
   let text_width = text_galley.rect.width();
   let text_height = text_galley.rect.height();
 
@@ -2073,6 +2129,7 @@ fn render_color_tooltip(
     square_rect.max.x + gap,
     tooltip_rect.min.y + (tooltip_height - text_height) * 0.5,
   );
+
   painter.galley(text_pos, text_galley, egui::Color32::WHITE);
 
   // Handle click on tooltip.
@@ -2108,6 +2165,7 @@ fn draw_mini_checkerboard(
   for row in 0..rows {
     for col in 0..cols {
       let color = if (row + col) % 2 == 0 { light } else { dark };
+
       let cell_rect = egui::Rect::from_min_size(
         egui::pos2(
           rect.min.x + col as f32 * cell_size,

@@ -1,0 +1,3 @@
+# codelord — language.
+
+> *...*

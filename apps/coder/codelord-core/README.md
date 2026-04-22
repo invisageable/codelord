@@ -1,1 +1,3 @@
-  - Data/logic → ide-core
+# codelord — core.
+
+> *...*

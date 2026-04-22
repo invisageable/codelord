@@ -1,2 +1,3 @@
+# codelord — components.
 
-  - Pixels/visuals → ide-components
+> *...*
