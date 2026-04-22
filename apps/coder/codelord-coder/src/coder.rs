@@ -15,30 +15,20 @@ use codelord_core::animation::resources::{
   ActiveAnimations, ContinuousAnimations,
 };
 use codelord_core::audio::resources::{AudioDispatcher, MusicPlayerState};
-use codelord_core::codeshow::{
-  CodeshowState, NavigateSlide, PendingPresentationDirectory,
-  PendingPresentationFile, SlideDirection,
-};
+use codelord_core::codeshow::{CodeshowState, NavigateSlide, SlideDirection};
 use codelord_core::ecs::schedule::Schedule;
 use codelord_core::ecs::world::World;
 use codelord_core::events::{
   CenterWindowRequest, ClearSessionRequest, CompileRequest,
-  NavigateNextTabRequest, NavigatePrevTabRequest, OpenFileRequest,
+  NavigateNextTabRequest, NavigatePrevTabRequest,
   PositionWindowLeftHalfRequest, PositionWindowRightHalfRequest,
   SaveFileRequest, ShakeWindowRequest, ToggleBlameRequest, ToggleSearchRequest,
 };
-use codelord_core::filescope::resources::{
-  FilescopeMode, FilescopeResponse, FilescopeState,
-};
-use codelord_core::keyboard::{Focusable, KeyboardHandler};
+use codelord_core::filescope::resources::{FilescopeMode, FilescopeState};
 use codelord_core::loading::{GlobalLoading, LoadingTask};
 use codelord_core::magic_zoom::{MagicZoomCommand, MagicZoomState};
-use codelord_core::navigation::resources::ExplorerState;
 use codelord_core::page::components::Page;
 use codelord_core::page::resources::PageResource;
-use codelord_core::panel::resources::{
-  BottomPanelResource, LeftPanelResource, RightPanelResource,
-};
 use codelord_core::playground::{
   PLAYGROUND_PREVIEW_URL, PlaygroundOutput, PlaygroundWebviewState,
 };
@@ -49,13 +39,7 @@ use codelord_core::previews::{
 };
 use codelord_core::search::SearchState;
 use codelord_core::tabbar::components::EditorTab;
-use codelord_core::tabbar::components::{PlaygroundTab, SonarAnimation, Tab};
-use codelord_core::tabbar::{
-  TabOrderCounter, UnsavedChangesDialog, UnsavedChangesResponse,
-};
-use codelord_core::text_editor::components::{Cursor, TextBuffer};
 use codelord_core::theme::resources::{ThemeAction, ThemeCommand};
-use codelord_core::toast::components::ToastAction;
 use codelord_core::toast::resources::{DismissToastCommand, ToastCommand};
 use codelord_core::ui::component::Active;
 use codelord_core::voice::components::VoiceState;
@@ -179,6 +163,7 @@ impl Coder {
     voice::install(&mut world);
     filescope::install(&mut world);
     codeshow::install(&mut world);
+    playground::install(&mut world);
 
     // Initialize Async Runtime & Voice System
 
@@ -408,6 +393,7 @@ impl eframe::App for Coder {
         };
 
         let layer_id = Self::magic_zoom_layer_id();
+
         ui.ctx().set_transform_layer(layer_id, transform);
 
         ui.scope_builder(
@@ -696,12 +682,13 @@ impl eframe::App for Coder {
       .world
       .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<ClearSessionRequest>>()
       .iter(&self.world)
-      .next() {
-        self.clear_session_on_save = true;
-        self.world.despawn(entity);
-        self.reset_to_fresh_state();
-        log::info!("[Session] Session cleared and state reset");
-      }
+      .next()
+    {
+      self.clear_session_on_save = true;
+      self.world.despawn(entity);
+      codelord_core::session::reset_to_fresh_state(&mut self.world);
+      log::info!("[Session] Session cleared and state reset");
+    }
 
     // Handle Window Requests (need egui::Context)
 
@@ -818,90 +805,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // Codeshow (Presenter) Message Handling
-    {
-      // Poll pending file dialog (non-blocking)
-      let file_result = self
-        .world
-        .get_resource::<PendingPresentationFile>()
-        .and_then(|pending| pending.0.try_recv().ok());
-
-      if let Some(result) = file_result {
-        if let Some(path) = result
-          && let Some(mut state) =
-            self.world.get_resource_mut::<CodeshowState>()
-        {
-          let path_str = path.display().to_string();
-
-          if let Err(e) = state.load_file(path) {
-            log::error!("[Codeshow] Failed to load presentation file: {e}");
-          } else {
-            log::info!("[Codeshow] Loaded presentation: {path_str}");
-          }
-        }
-
-        self.world.remove_resource::<PendingPresentationFile>();
-      }
-
-      // Poll pending directory dialog (non-blocking)
-      let dir_result = self
-        .world
-        .get_resource::<PendingPresentationDirectory>()
-        .and_then(|pending| pending.0.try_recv().ok());
-
-      if let Some(result) = dir_result {
-        if let Some(path) = result
-          && let Some(mut state) =
-            self.world.get_resource_mut::<CodeshowState>()
-        {
-          let path_str = path.display().to_string();
-
-          if let Err(e) = state.load_directory(path) {
-            log::error!("[Codeshow] Failed to load presentation dir: {e}");
-          } else {
-            log::info!("[Codeshow] Loaded presentation dir: {path_str}");
-          }
-        }
-
-        self.world.remove_resource::<PendingPresentationDirectory>();
-      }
-
-      // Handle NavigateSlide messages
-      let nav_messages: Vec<_> = self
-        .world
-        .query_filtered::<(bevy_ecs::entity::Entity, &NavigateSlide), ()>()
-        .iter(&self.world)
-        .map(|(e, msg)| (e, msg.direction))
-        .collect();
-
-      for (entity, direction) in nav_messages {
-        if let Some(mut state) = self.world.get_resource_mut::<CodeshowState>()
-        {
-          match direction {
-            SlideDirection::Next => state.next(),
-            SlideDirection::Previous => state.previous(),
-            SlideDirection::First => state.first(),
-            SlideDirection::Last => state.last(),
-          }
-        }
-
-        self.world.despawn(entity);
-      }
-
-      // Update transition animation
-      if let Some(mut state) = self.world.get_resource_mut::<CodeshowState>()
-        && state.is_animating()
-      {
-        state.update_transition(delta);
-
-        // Mark presenter animation as active
-        if let Some(mut cont) =
-          self.world.get_resource_mut::<ContinuousAnimations>()
-        {
-          cont.set_presenter_active();
-        }
-      }
-    }
+    codeshow::poll_pending(&mut self.world, delta);
 
     // Gilrs Remote Control Input (NORWII N76 and similar presenters)
     if let Some(gilrs) = self.gilrs.as_mut() {
@@ -1156,19 +1060,7 @@ impl eframe::App for Coder {
       anim.set_shake_active();
     }
 
-    // Mark voice animation as active if not idle (waveform, progress bar, etc.)
-    let voice_animating = self
-      .world
-      .get_resource::<VoiceResource>()
-      .map(|v| !matches!(v.visualizer_status, VisualizerStatus::Idle))
-      .unwrap_or(false);
-
-    voice_animating.then(|| {
-      self
-        .world
-        .get_resource_mut::<ContinuousAnimations>()
-        .map(|mut anim| anim.set_voice_active())
-    });
+    voice::tick_continuous_animation(&mut self.world);
 
     // Apply Theme (animated or static)
     let visuals = assets::theme::get_animated_visuals(&self.world);
@@ -1291,29 +1183,7 @@ impl eframe::App for Coder {
       }
     }
 
-    // Process continuous animations (wave, stripe, cursor blink)
-    let animation_changes = self
-      .world
-      .get_resource_mut::<ContinuousAnimations>()
-      .map(|mut cont| cont.end_frame());
-
-    if let Some((increments, decrements)) = animation_changes
-      && (increments > 0 || decrements > 0)
-      && let Some(mut active) =
-        self.world.get_resource_mut::<ActiveAnimations>()
-    {
-      (0..increments).for_each(|_| active.increment());
-      (0..decrements).for_each(|_| active.decrement());
-    }
-
-    // Request repaint if any animations are active
-
-    if self
-      .world
-      .get_resource::<ActiveAnimations>()
-      .filter(|a| a.has_active())
-      .is_some()
-    {
+    if animation::end_frame(&mut self.world) {
       ctx.request_repaint();
     }
   }
@@ -1321,6 +1191,7 @@ impl eframe::App for Coder {
   fn save(&mut self, storage: &mut dyn eframe::Storage) {
     if self.clear_session_on_save {
       crate::session::clear_session(storage);
+
       return;
     }
 
@@ -1551,13 +1422,13 @@ impl Coder {
     // Render filescope overlay
     let filescope_response = overlays::filescope::show(&ctx, &mut self.world);
 
-    self.handle_filescope_response(filescope_response);
+    filescope::apply_response(&mut self.world, filescope_response);
 
     // Render unsaved changes dialog
     let unsaved_response =
       overlays::unsaved_changes_dialog::show(&ctx, &mut self.world);
 
-    self.handle_unsaved_changes_response(unsaved_response);
+    tabbar::apply_unsaved_changes_response(&mut self.world, unsaved_response);
 
     // Render toast notifications overlay
     egui::Area::new(egui::Id::new("toaster_overlay"))
@@ -1580,7 +1451,7 @@ impl Coder {
     // picker, dialogs, toasts) now that they've all rendered.
     self.propagate_magic_zoom(&ctx);
     // Check if voice model download toast should be shown
-    self.check_voice_model_toast();
+    voice::check_model_toast(&mut self.world);
 
     // Handle keyboard shortcuts
     if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::T)) {
@@ -1810,85 +1681,6 @@ impl Coder {
     }
   }
 
-  /// Handle response from filescope.
-  fn handle_filescope_response(&mut self, response: FilescopeResponse) {
-    match response {
-      FilescopeResponse::Select(path, _action) => {
-        self.world.spawn(OpenFileRequest::new(path));
-        self.world.resource_mut::<FilescopeState>().hide();
-      }
-      FilescopeResponse::Close => {
-        self.world.resource_mut::<FilescopeState>().hide();
-      }
-      FilescopeResponse::None => {}
-    }
-  }
-
-  /// Handle response from unsaved changes dialog.
-  fn handle_unsaved_changes_response(
-    &mut self,
-    response: UnsavedChangesResponse,
-  ) {
-    match response {
-      UnsavedChangesResponse::None => {
-        // Dialog still open, do nothing
-      }
-      UnsavedChangesResponse::Save => {
-        // Save and close the tab
-        let entity = self.world.resource::<UnsavedChangesDialog>().entity;
-
-        if let Some(entity) = entity {
-          // Spawn save request
-          self.world.spawn(SaveFileRequest::new(entity));
-          // Note: Don't close tab here - save system will handle it
-          // and we may need to wait for "Save As" dialog for new tabs
-        }
-
-        self.world.resource_mut::<UnsavedChangesDialog>().close();
-      }
-      UnsavedChangesResponse::DontSave => {
-        // Close tab without saving
-        let entity = self.world.resource::<UnsavedChangesDialog>().entity;
-
-        if let Some(entity) = entity {
-          // Get tab info for activating next tab
-          let tab_order =
-            self.world.get::<Tab>(entity).map(|t| t.order).unwrap_or(0);
-
-          // Find and activate next tab
-          let next_entity: Option<bevy_ecs::entity::Entity> = self
-            .world
-            .query_filtered::<(bevy_ecs::entity::Entity, &Tab), bevy_ecs::prelude::With<tabbar::EditorTab>>()
-            .iter(&self.world)
-            .filter(|(e, _)| *e != entity)
-            .min_by_key(|(_, t)| {
-              if t.order > tab_order {
-                t.order
-              } else {
-                u32::MAX - t.order
-              }
-            })
-            .map(|(e, _)| e);
-
-          // Deactivate current, activate next
-          self.world.entity_mut(entity).remove::<Active>();
-          if let Some(next) = next_entity {
-            self.world.entity_mut(next).insert(Active);
-          }
-
-          // Despawn the tab
-          self.world.despawn(entity);
-        }
-
-        self.world.resource_mut::<UnsavedChangesDialog>().close();
-      }
-      UnsavedChangesResponse::Cancel => {
-        // Just close the dialog, don't close the tab
-        self.world.resource_mut::<UnsavedChangesDialog>().close();
-      }
-    }
-  }
-
   /// Handle toast action button clicks.
   fn handle_toast_action(&mut self, action_id: &str) {
     match action_id {
@@ -1919,31 +1711,6 @@ impl Coder {
     }
   }
 
-  /// Check if voice model download toast should be shown.
-  fn check_voice_model_toast(&mut self) {
-    let should_show = self
-      .world
-      .get_resource::<VoiceModelState>()
-      .map(|s| s.show_download_toast)
-      .unwrap_or(false);
-
-    if should_show {
-      // Clear the flag immediately to avoid duplicate toasts
-      if let Some(mut model_state) =
-        self.world.get_resource_mut::<VoiceModelState>()
-      {
-        model_state.dismiss_toast();
-      }
-
-      // Send toast command with action buttons
-      self.world.write_message(
-        ToastCommand::info("Voice model required (~148 MB)").with_actions(
-          vec![ToastAction::new("voice_download", "Download").stripe()],
-        ),
-      );
-    }
-  }
-
   /// Restore session state from storage.
   /// Returns true if tabs were restored (session had open files).
   fn restore_session(
@@ -1964,81 +1731,6 @@ impl Coder {
     };
 
     session.apply_to_world(world)
-  }
-
-  /// Reset the app to a fresh state (clear all tabs, explorer, etc.)
-  fn reset_to_fresh_state(&mut self) {
-    use ecs::query::With;
-    use navigation::components::FileEntry;
-
-    // Collect all editor tab entities to despawn
-    let editor_tabs: Vec<ecs::entity::Entity> = self
-      .world
-      .query_filtered::<ecs::entity::Entity, With<EditorTab>>()
-      .iter(&self.world)
-      .collect();
-
-    // Collect all file entries (explorer items) to despawn
-    let file_entries: Vec<ecs::entity::Entity> = self
-      .world
-      .query_filtered::<ecs::entity::Entity, With<FileEntry>>()
-      .iter(&self.world)
-      .collect();
-
-    // Despawn all editor tabs
-    editor_tabs.iter().for_each(|&entity| {
-      self.world.despawn(entity);
-    });
-
-    // Despawn all file entries
-    file_entries.iter().for_each(|&entity| {
-      self.world.despawn(entity);
-    });
-
-    // Clear explorer roots
-    if let Some(mut explorer) = self.world.get_resource_mut::<ExplorerState>() {
-      explorer.roots.clear();
-    }
-
-    // Reset panel visibility to defaults
-    if let Some(mut left) = self.world.get_resource_mut::<LeftPanelResource>() {
-      left.is_visible = true;
-    }
-
-    if let Some(mut right) = self.world.get_resource_mut::<RightPanelResource>()
-    {
-      right.is_visible = false;
-    }
-
-    if let Some(mut bottom) =
-      self.world.get_resource_mut::<BottomPanelResource>()
-    {
-      bottom.is_visible = false;
-    }
-
-    // Reset tab order counter
-    if let Some(mut counter) = self.world.get_resource_mut::<TabOrderCounter>()
-    {
-      counter.reset();
-    }
-
-    // Create a fresh playground tab
-    let order = self
-      .world
-      .get_resource_mut::<TabOrderCounter>()
-      .map(|mut counter| counter.next())
-      .unwrap_or(0);
-
-    self.world.spawn((
-      Tab::new("playground-1", order),
-      PlaygroundTab,
-      SonarAnimation::default(),
-      TextBuffer::empty(),
-      Cursor::new(0),
-      Active,
-      Focusable,
-      KeyboardHandler::text_editor(),
-    ));
   }
 }
 

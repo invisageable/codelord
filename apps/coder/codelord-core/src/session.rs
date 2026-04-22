@@ -356,3 +356,76 @@ impl SessionState {
     }
   }
 }
+
+/// Reset the world to a fresh post-install state: despawn every editor
+/// tab and explorer entry, clear the workspace roots, reset panel
+/// visibility and the tab-order counter, then spawn a fresh empty
+/// playground tab.
+///
+/// Called from the app shell when the user requests "Clear Session".
+pub fn reset_to_fresh_state(world: &mut World) {
+  use crate::ecs::entity::Entity;
+  use crate::keyboard::{Focusable, KeyboardHandler};
+  use crate::navigation::components::FileEntry;
+  use crate::panel::resources::{
+    BottomPanelResource, LeftPanelResource, RightPanelResource,
+  };
+  use crate::tabbar::components::{PlaygroundTab, SonarAnimation, Tab};
+  use crate::tabbar::resources::TabOrderCounter;
+  use crate::text_editor::components::{Cursor, TextBuffer};
+  use crate::ui::component::Active;
+
+  let editor_tabs: Vec<Entity> = world
+    .query_filtered::<Entity, With<EditorTab>>()
+    .iter(world)
+    .collect();
+
+  let file_entries: Vec<Entity> = world
+    .query_filtered::<Entity, With<FileEntry>>()
+    .iter(world)
+    .collect();
+
+  for entity in editor_tabs {
+    world.despawn(entity);
+  }
+
+  for entity in file_entries {
+    world.despawn(entity);
+  }
+
+  if let Some(mut explorer) = world.get_resource_mut::<ExplorerState>() {
+    explorer.roots.clear();
+  }
+
+  if let Some(mut left) = world.get_resource_mut::<LeftPanelResource>() {
+    left.is_visible = true;
+  }
+
+  if let Some(mut right) = world.get_resource_mut::<RightPanelResource>() {
+    right.is_visible = false;
+  }
+
+  if let Some(mut bottom) = world.get_resource_mut::<BottomPanelResource>() {
+    bottom.is_visible = false;
+  }
+
+  if let Some(mut counter) = world.get_resource_mut::<TabOrderCounter>() {
+    counter.reset();
+  }
+
+  let order = world
+    .get_resource_mut::<TabOrderCounter>()
+    .map(|mut counter| counter.next())
+    .unwrap_or(0);
+
+  world.spawn((
+    Tab::new("playground-1", order),
+    PlaygroundTab,
+    SonarAnimation::default(),
+    TextBuffer::empty(),
+    Cursor::new(0),
+    Active,
+    Focusable,
+    KeyboardHandler::text_editor(),
+  ));
+}
