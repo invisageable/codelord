@@ -1045,6 +1045,7 @@ impl eframe::App for Coder {
     // Clear shake animation and decrement counter if complete
     if shake_complete {
       self.shake_animation = None;
+
       if let Some(mut active) =
         self.world.get_resource_mut::<ActiveAnimations>()
       {
@@ -1549,6 +1550,7 @@ impl Coder {
     let (want_engage, cursor) = ctx.input(|i| {
       let held = i.modifiers.command && i.key_down(egui::Key::E);
       let cursor = i.pointer.hover_pos().map(|p| (p.x, p.y));
+
       (held, cursor)
     });
 
