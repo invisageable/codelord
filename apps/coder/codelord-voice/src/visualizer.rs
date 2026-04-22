@@ -97,20 +97,4 @@ impl VoiceVisualizerState {
   }
 }
 
-/// Current state of the voice visualizer.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum VisualizerStatus {
-  /// Not recording or playing.
-  #[default]
-  Idle,
-  /// User speaking (recording).
-  Listening,
-  /// Transcribing/thinking.
-  Processing,
-  /// AI responding.
-  Speaking,
-  /// Brief success feedback.
-  Success,
-  /// Brief error feedback.
-  Error,
-}
+pub use codelord_protocol::voice::VisualizerStatus;

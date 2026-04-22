@@ -898,24 +898,8 @@ impl eframe::App for Coder {
       }
 
       // Sync waveform data from VoiceManager to ECS resource
-      let vm_status = voice_manager.get_status();
+      let status = voice_manager.get_status();
       let waveform = voice_manager.get_waveform();
-
-      // Convert codelord_voice status to ECS VisualizerStatus
-      let status = match vm_status {
-        codelord_voice::VisualizerStatus::Idle => VisualizerStatus::Idle,
-        codelord_voice::VisualizerStatus::Listening => {
-          VisualizerStatus::Listening
-        }
-        codelord_voice::VisualizerStatus::Processing => {
-          VisualizerStatus::Processing
-        }
-        codelord_voice::VisualizerStatus::Speaking => {
-          VisualizerStatus::Speaking
-        }
-        codelord_voice::VisualizerStatus::Success => VisualizerStatus::Success,
-        codelord_voice::VisualizerStatus::Error => VisualizerStatus::Error,
-      };
 
       if let Some(mut voice_res) =
         self.world.get_resource_mut::<VoiceResource>()
@@ -924,18 +908,16 @@ impl eframe::App for Coder {
         voice_res.set_visualizer_status(status);
 
         // Update state from visualizer status (Processing, etc.)
-        match vm_status {
-          codelord_voice::VisualizerStatus::Processing
+        match status {
+          VisualizerStatus::Processing
             if voice_res.state == VoiceState::Listening =>
           {
             voice_res.set_state(VoiceState::Processing);
           }
-          codelord_voice::VisualizerStatus::Success => {
+          VisualizerStatus::Success => {
             voice_res.set_state(VoiceState::Idle);
           }
-          codelord_voice::VisualizerStatus::Error
-            if voice_res.state != VoiceState::Idle =>
-          {
+          VisualizerStatus::Error if voice_res.state != VoiceState::Idle => {
             voice_res.set_error("Voice processing failed");
           }
           _ => {}

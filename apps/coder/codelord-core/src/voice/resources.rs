@@ -20,23 +20,7 @@ pub struct VoiceActionEvent {
   pub payload: Option<String>,
 }
 
-/// Current state of the voice visualizer (for UI rendering).
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum VisualizerStatus {
-  /// Not recording or playing.
-  #[default]
-  Idle,
-  /// User speaking (recording).
-  Listening,
-  /// Transcribing/thinking.
-  Processing,
-  /// AI responding.
-  Speaking,
-  /// Brief success feedback.
-  Success,
-  /// Brief error feedback.
-  Error,
-}
+pub use codelord_protocol::voice::VisualizerStatus;
 
 /// Resource managing voice control UI state.
 /// The actual VoiceManager is stored separately and polled by the coder.
